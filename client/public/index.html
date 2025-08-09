@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="pt-br" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guess the Song - Multiplayer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        
+        :root {
+            --primary: #8b5cf6;
+            --primary-dark: #7c3aed;
+            --secondary: #06b6d4;
+            --accent: #f59e0b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --glass: rgba(15, 23, 42, 0.8);
+        }
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+            min-height: 100vh;
+        }
+        
+        .hidden { display: none !important; }
+        
+        /* Glass morphism effect */
+        .glass {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        
+        .glass-light {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+        
+        /* Gradient backgrounds */
+        .gradient-primary {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        }
+        
+        .gradient-secondary {
+            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+        }
+        
+        .gradient-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+        
+        .gradient-accent {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+        
+        /* Animated background */
+        .bg-animated {
+            background-size: 400% 400%;
+            animation: gradientShift 8s ease infinite;
+        }
+        
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        /* Progress bar animation */
+        @keyframes progress {
+            from { width: 100%; }
+            to { width: 0%; }
+        }
+        
+        .progress-bar-animate {
+            animation: progress linear forwards;
+        }
+        
+        /* Floating animations */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .float {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        /* Pulse effect */
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.5); }
+            50% { box-shadow: 0 0 40px rgba(139, 92, 246, 0.8), 0 0 60px rgba(139, 92, 246, 0.4); }
+        }
+        
+        .pulse-glow {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+        
+        /* Spinner */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: rgba(139, 92, 246, 0.6);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(139, 92, 246, 0.8);
+        }
+        
+        /* Button hover effects */
+        .btn-hover {
+            transition: all 0.3s ease;
+            transform: translateY(0);
+        }
+        
+        .btn-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Card hover effects */
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+        }
+        
+        /* Input focus effects */
+        .input-glow {
+            transition: all 0.3s ease;
+        }
+        
+        .input-glow:focus {
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.3), 0 0 20px rgba(139, 92, 246, 0.2);
+        }
+        
+        /* Neon text effect */
+        .neon-text {
+            text-shadow: 0 0 10px rgba(139, 92, 246, 0.8), 0 0 20px rgba(139, 92, 246, 0.5);
+        }
+        
+        /* Particle background */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .particle {
+            position: absolute;
+            background: rgba(139, 92, 246, 0.3);
+            border-radius: 50%;
+            animation: particleFloat 6s ease-in-out infinite;
+        }
+        
+        @keyframes particleFloat {
+            0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0; }
+            10%, 90% { opacity: 1; }
+            50% { transform: translateY(-100px) rotate(180deg); }
+        }
+        
+        /* Responsive breakpoints */
+        @media (max-width: 640px) {
+            .glass {
+                margin: 0.5rem;
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-white min-h-screen p-2 sm:p-4 overflow-x-hidden">
+    <!-- Animated background particles -->
+    <div class="particles" id="particles"></div>
+    
+    <!-- Loading overlay with modern design -->
+    <div id="loading-overlay" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center z-50">
+        <div class="glass p-8 rounded-3xl text-center max-w-sm mx-4">
+            <div class="relative mb-6">
+                <div class="w-16 h-16 mx-auto">
+                    <div class="fa-solid fa-circle-notch text-4xl text-purple-400 spinner"></div>
+                </div>
+                <div class="absolute -inset-2 rounded-full bg-gradient-to-r from-purple-400 to-cyan-400 opacity-30 blur animate-pulse"></div>
+            </div>
+            <p id="loading-message" class="text-lg text-slate-200 font-medium"></p>
+            <div class="mt-4 w-full bg-slate-700/50 rounded-full h-2">
+                <div class="bg-gradient-primary h-2 rounded-full animate-pulse" style="width: 60%"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="main-container" class="w-full max-w-4xl mx-auto">
+        <!-- Entry View - Modern hero section -->
+        <div id="entry-view" class="glass rounded-3xl p-6 sm:p-8 lg:p-12 text-center card-hover">
+            <!-- Hero section -->
+            <div class="mb-8">
+                <div class="relative inline-block">
+                    <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent mb-4 neon-text">
+                        Guess the Song
+                    </h1>
+                    <div class="absolute -inset-4 bg-gradient-to-r from-purple-400/20 to-cyan-400/20 blur-xl rounded-full"></div>
+                </div>
+                <p class="text-slate-400 text-lg sm:text-xl font-medium">Desafie seus amigos em tempo real!</p>
+                <div class="flex justify-center items-center mt-4 space-x-2">
+                    <div class="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
+                    <div class="w-2 h-2 bg-cyan-400 rounded-full animate-pulse delay-75"></div>
+                    <div class="w-2 h-2 bg-pink-400 rounded-full animate-pulse delay-150"></div>
+                </div>
+            </div>
+
+            <!-- Username input -->
+            <div class="mb-8">
+                <div class="relative max-w-md mx-auto">
+                    <i class="fas fa-user absolute left-4 top-1/2 transform -translate-y-1/2 text-purple-400"></i>
+                    <input type="text" id="username-input" placeholder="Digite seu nome" 
+                           class="w-full bg-slate-800/50 text-white pl-12 pr-4 py-4 rounded-2xl border border-slate-700/50 focus:border-purple-500 focus:outline-none input-glow text-lg font-medium">
+                </div>
+            </div>
+
+            <div class="grid lg:grid-cols-2 gap-6 lg:gap-8">
+                <!-- Create Room Section -->
+                <div class="glass-light p-6 rounded-2xl border border-purple-500/20 card-hover">
+                    <div class="text-center mb-6">
+                        <div class="w-12 h-12 mx-auto mb-4 bg-gradient-primary rounded-xl flex items-center justify-center">
+                            <i class="fas fa-plus text-white text-xl"></i>
+                        </div>
+                        <h3 class="font-bold text-xl mb-2 text-purple-300">Criar Nova Sala</h3>
+                        <p class="text-slate-400 text-sm">Configure sua playlist e duração</p>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="relative">
+                            <i class="fab fa-spotify absolute left-4 top-1/2 transform -translate-y-1/2 text-green-500"></i>
+                            <input type="text" id="playlist-url-input" placeholder="URL da playlist do Spotify" 
+                                   class="w-full bg-slate-800/50 text-white pl-12 pr-4 py-3 rounded-xl border border-slate-700/50 focus:border-green-500 focus:outline-none input-glow">
+                        </div>
+                        
+                        <div class="relative">
+                            <i class="fas fa-clock absolute left-4 top-1/2 transform -translate-y-1/2 text-cyan-400"></i>
+                            <select id="duration-select" class="w-full bg-slate-800/50 text-white pl-12 pr-4 py-3 rounded-xl border border-slate-700/50 focus:border-cyan-500 focus:outline-none">
+                                <option value="15">15 segundos</option>
+                                <option value="20">20 segundos</option>
+                                <option value="30" selected>30 segundos</option>
+                                <option value="60">1 minuto</option>
+                            </select>
+                        </div>
+
+                        <button id="create-room-btn" class="w-full gradient-primary hover:shadow-lg p-4 rounded-xl font-bold text-lg transition-all btn-hover pulse-glow">
+                            <i class="fas fa-rocket mr-2"></i>Criar Sala
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Join Room Section -->
+                <div class="glass-light p-6 rounded-2xl border border-cyan-500/20 card-hover">
+                    <div class="text-center mb-6">
+                        <div class="w-12 h-12 mx-auto mb-4 gradient-secondary rounded-xl flex items-center justify-center">
+                            <i class="fas fa-sign-in-alt text-white text-xl"></i>
+                        </div>
+                        <h3 class="font-bold text-xl mb-2 text-cyan-300">Entrar em Sala</h3>
+                        <p class="text-slate-400 text-sm">Use o código da sala existente</p>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="relative">
+                            <i class="fas fa-key absolute left-4 top-1/2 transform -translate-y-1/2 text-amber-400"></i>
+                            <input type="text" id="room-code-input" placeholder="Código da sala" 
+                                   class="w-full bg-slate-800/50 text-white pl-12 pr-4 py-3 rounded-xl border border-slate-700/50 focus:border-amber-500 focus:outline-none input-glow font-mono text-center tracking-wider">
+                        </div>
+                        
+                        <button id="join-room-btn" class="w-full gradient-success hover:shadow-lg p-4 rounded-xl font-bold text-lg transition-all btn-hover">
+                            <i class="fas fa-door-open mr-2"></i>Entrar
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <p id="error-message" class="text-red-400 mt-6 h-6 font-medium"></p>
+        </div>
+
+        <!-- Lobby View -->
+        <div id="lobby-view" class="hidden glass rounded-3xl p-6 sm:p-8">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 space-y-4 sm:space-y-0">
+                <div>
+                    <h2 class="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">Lobby da Sala</h2>
+                    <p class="text-slate-400 mt-2">Aguardando jogadores se conectarem...</p>
+                </div>
+                <div class="glass-light p-4 rounded-2xl text-center">
+                    <p class="text-slate-400 text-sm mb-1">Código da Sala</p>
+                    <button id="room-code-display" class="gradient-accent text-black font-bold text-xl px-4 py-2 rounded-lg font-mono tracking-wider hover:scale-105 transition-transform" 
+                            title="Clique para copiar"></button>
+                    <p class="text-xs text-slate-500 mt-1">Clique para copiar</p>
+                </div>
+            </div>
+
+            <div class="mb-8">
+                <div class="flex items-center mb-4">
+                    <i class="fas fa-users text-purple-400 mr-3 text-xl"></i>
+                    <h3 class="text-xl font-semibold">Jogadores na sala</h3>
+                </div>
+                <div id="player-list-lobby" class="grid gap-3">
+                    <!-- Players will be inserted here -->
+                </div>
+            </div>
+
+            <div class="text-center">
+                <button id="start-game-btn" class="hidden gradient-primary hover:shadow-xl p-4 px-8 rounded-2xl font-bold text-xl transition-all btn-hover pulse-glow">
+                    <i class="fas fa-play mr-3"></i>Começar o Jogo!
+                </button>
+                <div id="waiting-for-host" class="glass-light p-6 rounded-2xl">
+                    <i class="fas fa-hourglass-half text-cyan-400 text-2xl mb-3 float"></i>
+                    <p class="text-slate-300 text-lg font-medium">Aguardando o host iniciar o jogo...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game View -->
+        <div id="game-view" class="hidden space-y-4">
+            <!-- Game header -->
+            <div class="glass rounded-2xl p-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
+                    <div>
+                        <h2 class="text-2xl sm:text-3xl font-bold text-purple-400">
+                            Rodada <span id="current-round" class="text-cyan-400">1</span>/<span id="total-rounds">10</span>
+                        </h2>
+                        <p class="text-slate-400 mt-1">Ouça com atenção e adivinhe!</p>
+                    </div>
+                    <div class="glass-light p-4 rounded-xl text-center">
+                        <p class="text-slate-400 text-sm">Sua Pontuação</p>
+                        <p id="my-score" class="text-3xl font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">0</p>
+                    </div>
+                </div>
+                
+                <!-- Enhanced timer -->
+                <div class="relative w-full bg-slate-800/50 rounded-full h-4 overflow-hidden">
+                    <div id="timer-bar" class="absolute top-0 left-0 h-full bg-gradient-to-r from-purple-500 via-pink-500 to-cyan-500 rounded-full transition-all"></div>
+                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse"></div>
+                </div>
+            </div>
+
+            <!-- Game input -->
+            <div class="glass rounded-2xl p-6">
+                <div class="mb-4 text-center">
+                    <p id="system-message-display" class="font-semibold text-lg h-7"></p>
+                </div>
+                
+                <div class="flex items-center space-x-3">
+                    <div class="flex-1 relative">
+                        <i class="fas fa-music absolute left-4 top-1/2 transform -translate-y-1/2 text-purple-400"></i>
+                        <input type="text" id="guess-input" placeholder="Qual o nome da música ou artista?" 
+                               class="w-full bg-slate-800/50 text-white pl-12 pr-4 py-4 rounded-xl border border-slate-700/50 focus:border-purple-500 focus:outline-none input-glow text-lg">
+                    </div>
+                    <button id="submit-guess-btn" class="gradient-primary hover:shadow-lg p-4 rounded-xl font-bold transition-all btn-hover">
+                        <i class="fa-solid fa-paper-plane text-xl"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Scoreboard -->
+            <div class="glass rounded-2xl p-6">
+                <div class="flex items-center mb-6">
+                    <i class="fas fa-trophy text-amber-400 mr-3 text-xl"></i>
+                    <h3 class="text-xl font-semibold">Placar Atual</h3>
+                </div>
+                <div id="scoreboard" class="grid gap-3">
+                    <!-- Scoreboard will be inserted here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Over View -->
+        <div id="game-over-view" class="hidden glass rounded-3xl p-8 text-center">
+            <div class="mb-8">
+                <div class="relative inline-block">
+                    <h2 class="text-4xl sm:text-5xl font-black bg-gradient-to-r from-amber-400 via-orange-400 to-red-400 bg-clip-text text-transparent mb-4">
+                        Fim de Jogo!
+                    </h2>
+                    <div class="absolute -inset-4 bg-gradient-to-r from-amber-400/20 to-red-400/20 blur-xl rounded-full"></div>
+                </div>
+            </div>
+
+            <div id="winner-announcement" class="mb-8 glass-light p-6 rounded-2xl">
+                <!-- Winner announcement will be inserted here -->
+            </div>
+
+            <div class="mb-8">
+                <div class="flex items-center justify-center mb-6">
+                    <i class="fas fa-medal text-amber-400 mr-3 text-2xl"></i>
+                    <h3 class="text-2xl font-semibold">Placar Final</h3>
+                </div>
+                <div id="final-scoreboard" class="max-w-lg mx-auto space-y-3">
+                    <!-- Final scoreboard will be inserted here -->
+                </div>
+            </div>
+
+            <button id="play-again-btn" class="gradient-success hover:shadow-xl p-4 px-8 rounded-2xl font-bold text-xl transition-all btn-hover">
+                <i class="fas fa-redo mr-3"></i>Jogar Novamente
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Create animated particles
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            const particleCount = 20;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 6 + 's';
+                particle.style.animationDuration = (Math.random() * 3 + 3) + 's';
+                particle.style.width = particle.style.height = (Math.random() * 4 + 2) + 'px';
+                particlesContainer.appendChild(particle);
+            }
+        }
+        
+        createParticles();
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const loadingMessage = document.getElementById('loading-message');
+            const entryView = document.getElementById('entry-view');
+            const lobbyView = document.getElementById('lobby-view');
+            const gameView = document.getElementById('game-view');
+            const gameOverView = document.getElementById('game-over-view');
+
+            const usernameInput = document.getElementById('username-input');
+            const playlistUrlInput = document.getElementById('playlist-url-input');
+            const durationSelect = document.getElementById('duration-select');
+            const createRoomBtn = document.getElementById('create-room-btn');
+            const joinRoomBtn = document.getElementById('join-room-btn');
+            const roomCodeInput = document.getElementById('room-code-input');
+            const errorMessage = document.getElementById('error-message');
+
+            const roomCodeDisplay = document.getElementById('room-code-display');
+            const playerListLobby = document.getElementById('player-list-lobby');
+            const startGameBtn = document.getElementById('start-game-btn');
+            const waitingForHost = document.getElementById('waiting-for-host');
+
+            const currentRoundEl = document.getElementById('current-round');
+            const totalRoundsEl = document.getElementById('total-rounds');
+            const myScoreEl = document.getElementById('my-score');
+            const timerBar = document.getElementById('timer-bar');
+            const systemMessageDisplay = document.getElementById('system-message-display');
+            const guessInput = document.getElementById('guess-input');
+            const submitGuessBtn = document.getElementById('submit-guess-btn');
+            const scoreboard = document.getElementById('scoreboard');
+
+            const winnerAnnouncement = document.getElementById('winner-announcement');
+            const finalScoreboard = document.getElementById('final-scoreboard');
+            const playAgainBtn = document.getElementById('play-again-btn');
+
+            // --- Game State ---
+            let ws = null;
+            let username = '';
+            let roomId = '';
+            let isHost = false;
+            let audio = new Audio();
+            let systemMessageTimeout;
+
+            // --- UI Helper Functions ---
+            function showLoading(message) {
+                loadingMessage.textContent = message;
+                loadingOverlay.classList.remove('hidden');
+            }
+
+            function hideLoading() {
+                loadingOverlay.classList.add('hidden');
+            }
+
+            function showView(viewId) {
+                [entryView, lobbyView, gameView, gameOverView].forEach(v => v.classList.add('hidden'));
+                document.getElementById(viewId).classList.remove('hidden');
+            }
+
+            function displayError(message) {
+                errorMessage.textContent = message;
+                setTimeout(() => errorMessage.textContent = '', 4000);
+            }
+
+            function updatePlayerList(players, container, hostUsername) {
+                container.innerHTML = '';
+                players.sort((a, b) => b.score - a.score).forEach((player, index) => {
+                    const playerEl = document.createElement('div');
+                    playerEl.className = 'glass-light p-4 rounded-xl transition-all duration-300 hover:scale-105';
+                    
+                    const hostIcon = player.username === hostUsername ? '<i class="fas fa-crown text-amber-400 ml-2" title="Host"></i>' : '';
+                    const answeredIcon = player.has_answered ? '<i class="fas fa-check-circle text-green-400 ml-2" title="Acertou!"></i>' : '';
+                    const isCurrentUser = player.username === username;
+                    
+                    const rankColors = ['text-amber-400', 'text-slate-300', 'text-amber-600'];
+                    const rankColor = rankColors[index] || 'text-slate-400';
+                    
+                    playerEl.innerHTML = `
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center">
+                                <span class="font-bold text-lg mr-4 w-8 h-8 flex items-center justify-center rounded-full bg-gradient-to-r from-purple-500 to-cyan-500 text-white text-sm">
+                                    ${index + 1}
+                                </span>
+                                <div>
+                                    <div class="flex items-center">
+                                        <span class="font-semibold ${isCurrentUser ? 'text-purple-400' : 'text-white'}">${player.username}</span>
+                                        ${isCurrentUser ? '<span class="text-purple-300 text-sm ml-2">(Você)</span>' : ''}
+                                        ${hostIcon}
+                                        ${answeredIcon}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="font-bold text-xl bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
+                                    ${player.score}
+                                </span>
+                                <span class="text-slate-400 text-sm ml-1">pts</span>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(playerEl);
+                });
+            }
+
+            function showSystemMessage(message, level = "info") {
+                clearTimeout(systemMessageTimeout);
+                systemMessageDisplay.textContent = message;
+                systemMessageDisplay.className = 'font-semibold text-lg h-7 mb-4 transition-all duration-300';
+                
+                if (level === 'error') {
+                    systemMessageDisplay.classList.add('text-red-400');
+                } else {
+                    systemMessageDisplay.classList.add('text-green-400');
+                }
+
+                if (level !== 'error') {
+                    systemMessageTimeout = setTimeout(() => {
+                        systemMessageDisplay.textContent = '';
+                    }, 4000);
+                }
+            }
+
+            // --- Connection Logic ---
+            async function createAndConnect() {
+                username = usernameInput.value.trim();
+                const playlistUrl = playlistUrlInput.value.trim();
+                const roundDuration = parseInt(durationSelect.value, 10);
+
+                if (!username) {
+                    displayError("Por favor, digite um nome de usuário.");
+                    return;
+                }
+                if (!playlistUrl || !playlistUrl.includes('spotify.com/playlist/')) {
+                    displayError("Por favor, insira uma URL de playlist do Spotify válida.");
+                    return;
+                }
+                
+                showLoading("Criando sala...");
+
+                try {
+                    const response = await fetch('/create-room', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            username: username,
+                            playlist_url: playlistUrl,
+                            round_duration: roundDuration
+                        }),
+                    });
+                    
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(data.detail || 'Falha ao criar a sala.');
+                    }
+                    
+                    roomId = data.room_id;
+                    isHost = true;
+                    await connectWebSocket(roomId);
+
+                } catch (error) {
+                    hideLoading();
+                    displayError(error.message);
+                }
+            }
+
+            async function joinAndConnect() {
+                username = usernameInput.value.trim();
+                const code = roomCodeInput.value.trim().toUpperCase();
+                if (!username) {
+                    displayError("Por favor, digite um nome de usuário.");
+                    return;
+                }
+                if (!code) {
+                    displayError("Por favor, insira um código de sala.");
+                    return;
+                }
+                showLoading("Entrando na sala...");
+                await connectWebSocket(code);
+            }
+
+            async function connectWebSocket(joinRoomId) {
+                roomId = joinRoomId;
+                const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws/${roomId}/${encodeURIComponent(username)}`);
+
+                ws.onopen = () => console.log("Conectado ao servidor WebSocket.");
+
+                ws.onmessage = (event) => handleWebSocketMessage(JSON.parse(event.data));
+
+                ws.onclose = () => {
+                    console.log("Desconectado do servidor WebSocket.");
+                    hideLoading();
+                    showView('entry-view');
+                    displayError("Conexão perdida. Tente novamente.");
+                    ws = null;
+                };
+
+                ws.onerror = (error) => {
+                    console.error("Erro no WebSocket:", error);
+                    hideLoading();
+                    displayError("Ocorreu um erro na conexão.");
+                    ws = null;
+                };
+            }
+
+            function handleWebSocketMessage(data) {
+                console.log("Mensagem recebida:", data);
+                hideLoading(); // Hide loading on any message received
+                switch (data.type) {
+                    case 'error':
+                        displayError(data.message);
+                        if (ws) ws.close();
+                        showView('entry-view');
+                        break;
+                    case 'room_joined':
+                        isHost = data.is_host;
+                        roomCodeDisplay.textContent = data.room_id;
+                        if (isHost) {
+                            startGameBtn.classList.remove('hidden');
+                            waitingForHost.classList.add('hidden');
+                        } else {
+                            startGameBtn.classList.add('hidden');
+                            waitingForHost.classList.remove('hidden');
+                        }
+                        showView('lobby-view');
+                        break;
+                    case 'update_players':
+                        const currentView = lobbyView.offsetParent !== null ? playerListLobby : scoreboard;
+                        updatePlayerList(data.players, currentView, data.host_username);
+                        if (gameView.offsetParent !== null) {
+                            const myPlayer = data.players.find(p => p.username === username);
+                            if (myPlayer) myScoreEl.textContent = myPlayer.score;
+                        }
+                        break;
+                    case 'system_message':
+                        if (data.message.toLowerCase().includes('baixando')) {
+                            showLoading(data.message);
+                        } else {
+                            showSystemMessage(data.message, data.level);
+                        }
+                        break;
+                    case 'start_round':
+                        showView('game-view');
+                        systemMessageDisplay.textContent = '';
+                        guessInput.value = '';
+                        guessInput.disabled = false;
+                        submitGuessBtn.disabled = false;
+                        guessInput.focus();
+                        currentRoundEl.textContent = data.round;
+                        totalRoundsEl.textContent = data.total_rounds;
+                        
+                        timerBar.style.animation = 'none';
+                        void timerBar.offsetWidth; // Trigger reflow
+                        timerBar.style.animation = `progress ${data.duration}s linear forwards`;
+                        
+                        audio.src = data.song_url;
+                        audio.play().catch(e => console.error("Erro ao tocar áudio:", e));
+                        break;
+                    case 'round_result':
+                        audio.pause();
+                        audio.currentTime = 0;
+                        showSystemMessage(`A resposta era: ${data.correct_title} - ${data.correct_artist}`);
+                        guessInput.disabled = true;
+                        submitGuessBtn.disabled = true;
+                        break;
+                    case 'game_over':
+                        audio.pause();
+                        showView('game-over-view');
+                        const winner = data.winner;
+                        if (winner) {
+                            winnerAnnouncement.innerHTML = `
+                                <div class="relative">
+                                    <i class="fas fa-crown text-amber-400 text-6xl mb-4 float"></i>
+                                    <div class="absolute -inset-8 bg-gradient-to-r from-amber-400/20 to-yellow-400/20 blur-xl rounded-full"></div>
+                                </div>
+                                <h3 class="text-3xl font-bold mb-2 bg-gradient-to-r from-amber-400 to-yellow-400 bg-clip-text text-transparent">
+                                    ${winner.username} é o vencedor!
+                                </h3>
+                                <p class="text-slate-400 text-lg">com ${winner.score} pontos</p>
+                                <div class="flex justify-center items-center mt-4 space-x-2">
+                                    <div class="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></div>
+                                    <div class="w-2 h-2 bg-yellow-400 rounded-full animate-pulse delay-75"></div>
+                                    <div class="w-2 h-2 bg-orange-400 rounded-full animate-pulse delay-150"></div>
+                                </div>
+                            `;
+                        } else {
+                            winnerAnnouncement.innerHTML = `
+                                <i class="fas fa-handshake text-cyan-400 text-5xl mb-4"></i>
+                                <p class="text-2xl font-bold">O jogo terminou em empate!</p>
+                            `;
+                        }
+                        updatePlayerList(data.scoreboard, finalScoreboard, data.host_username);
+                        break;
+                }
+            }
+
+            function sendMessage(data) {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify(data));
+                }
+            }
+            
+            // --- Event Listeners ---
+            createRoomBtn.addEventListener('click', createAndConnect);
+            joinRoomBtn.addEventListener('click', joinAndConnect);
+
+            startGameBtn.addEventListener('click', () => {
+                startGameBtn.disabled = true;
+                startGameBtn.innerHTML = '<i class="fas fa-circle-notch spinner mr-2"></i>Iniciando...';
+                sendMessage({ type: 'start_game' });
+            });
+
+            submitGuessBtn.addEventListener('click', () => {
+                const guess = guessInput.value.trim();
+                if (guess && !guessInput.disabled) {
+                    sendMessage({ type: 'submit_guess', guess: guess });
+                    guessInput.value = '';
+                }
+            });
+            
+            guessInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    submitGuessBtn.click();
+                }
+            });
+            
+            playAgainBtn.addEventListener('click', () => {
+               window.location.reload();
+            });
+
+            roomCodeDisplay.addEventListener('click', () => {
+                navigator.clipboard.writeText(roomCodeDisplay.textContent).then(() => {
+                    const originalText = roomCodeDisplay.textContent;
+                    roomCodeDisplay.innerHTML = '<i class="fas fa-check mr-1"></i>Copiado!';
+                    roomCodeDisplay.classList.add('bg-green-500');
+                    setTimeout(() => {
+                        roomCodeDisplay.textContent = originalText;
+                        roomCodeDisplay.classList.remove('bg-green-500');
+                    }, 1500);
+                });
+            });
+
+            // Auto-focus username input
+            usernameInput.focus();
+        });
+    </script>
+</body>
+</html>
