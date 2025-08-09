@@ -353,9 +353,16 @@
                         </h2>
                         <p class="text-slate-400 mt-1">Ouça com atenção e adivinhe!</p>
                     </div>
-                    <div class="glass-light p-4 rounded-xl text-center">
-                        <p class="text-slate-400 text-sm">Sua Pontuação</p>
-                        <p id="my-score" class="text-3xl font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">0</p>
+                    <div class="flex items-center gap-4">
+                         <div class="flex items-center gap-2">
+                            <i class="fas fa-volume-down text-slate-400"></i>
+                            <input type="range" id="volume-slider" min="0" max="100" value="50" class="w-24 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                            <i class="fas fa-volume-up text-slate-400"></i>
+                        </div>
+                        <div class="glass-light p-4 rounded-xl text-center">
+                            <p class="text-slate-400 text-sm">Sua Pontuação</p>
+                            <p id="my-score" class="text-3xl font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">0</p>
+                        </div>
                     </div>
                 </div>
                 
@@ -380,6 +387,9 @@
                     </div>
                     <button id="submit-guess-btn" class="gradient-primary hover:shadow-lg p-4 rounded-xl font-bold transition-all btn-hover">
                         <i class="fa-solid fa-paper-plane text-xl"></i>
+                    </button>
+                    <button id="give-up-btn" class="bg-red-600 hover:bg-red-700 hover:shadow-lg p-4 rounded-xl font-bold transition-all btn-hover">
+                        <i class="fa-solid fa-flag text-xl"></i>
                     </button>
                 </div>
             </div>
@@ -478,6 +488,8 @@
             const guessInput = document.getElementById('guess-input');
             const submitGuessBtn = document.getElementById('submit-guess-btn');
             const scoreboard = document.getElementById('scoreboard');
+            const giveUpBtn = document.getElementById('give-up-btn');
+            const volumeSlider = document.getElementById('volume-slider');
 
             const winnerAnnouncement = document.getElementById('winner-announcement');
             const finalScoreboard = document.getElementById('final-scoreboard');
@@ -489,6 +501,7 @@
             let roomId = '';
             let isHost = false;
             let audio = new Audio();
+            audio.volume = 0.5; // Start with 50% volume
             let systemMessageTimeout;
 
             // --- UI Helper Functions ---
@@ -513,16 +526,14 @@
 
             function updatePlayerList(players, container, hostUsername) {
                 container.innerHTML = '';
-                players.sort((a, b) => b.score - a.score).forEach((player, index) => {
+                players.forEach((player, index) => {
                     const playerEl = document.createElement('div');
                     playerEl.className = 'glass-light p-4 rounded-xl transition-all duration-300 hover:scale-105';
                     
-                    const hostIcon = player.username === hostUsername ? '<i class="fas fa-crown text-amber-400 ml-2" title="Host"></i>' : '';
-                    const answeredIcon = player.has_answered ? '<i class="fas fa-check-circle text-green-400 ml-2" title="Acertou!"></i>' : '';
+                    const hostIcon = player.username === hostUsername ? `<i class="fas fa-crown text-amber-400 ml-2" title="Host"></i>` : '';
+                    const answeredIcon = player.has_answered ? `<i class="fas fa-check-circle text-green-400 ml-2" title="Acertou!"></i>` : '';
+                    const gaveUpIcon = player.gave_up ? `<i class="fas fa-flag text-slate-400 ml-2" title="Desistiu"></i>` : '';
                     const isCurrentUser = player.username === username;
-                    
-                    const rankColors = ['text-amber-400', 'text-slate-300', 'text-amber-600'];
-                    const rankColor = rankColors[index] || 'text-slate-400';
                     
                     playerEl.innerHTML = `
                         <div class="flex justify-between items-center">
@@ -536,6 +547,7 @@
                                         ${isCurrentUser ? '<span class="text-purple-300 text-sm ml-2">(Você)</span>' : ''}
                                         ${hostIcon}
                                         ${answeredIcon}
+                                        ${gaveUpIcon}
                                     </div>
                                 </div>
                             </div>
@@ -551,21 +563,23 @@
                 });
             }
 
-            function showSystemMessage(message, level = "info") {
+            function showSystemMessage(message, level = "info", duration = 4000) {
                 clearTimeout(systemMessageTimeout);
                 systemMessageDisplay.textContent = message;
                 systemMessageDisplay.className = 'font-semibold text-lg h-7 mb-4 transition-all duration-300';
                 
                 if (level === 'error') {
                     systemMessageDisplay.classList.add('text-red-400');
-                } else {
+                } else if (level === 'success') {
                     systemMessageDisplay.classList.add('text-green-400');
+                } else {
+                    systemMessageDisplay.classList.add('text-cyan-300');
                 }
 
-                if (level !== 'error') {
+                if (duration > 0) {
                     systemMessageTimeout = setTimeout(() => {
                         systemMessageDisplay.textContent = '';
-                    }, 4000);
+                    }, duration);
                 }
             }
 
@@ -672,20 +686,37 @@
                             waitingForHost.classList.remove('hidden');
                         }
                         showView('lobby-view');
+                        updatePlayerList(data.players, playerListLobby, data.host_username);
                         break;
                     case 'update_players':
-                        const currentView = lobbyView.offsetParent !== null ? playerListLobby : scoreboard;
-                        updatePlayerList(data.players, currentView, data.host_username);
-                        if (gameView.offsetParent !== null) {
+                        const isLobby = lobbyView.offsetParent !== null;
+                        const isGame = gameView.offsetParent !== null;
+                        
+                        if (isLobby) {
+                            updatePlayerList(data.players, playerListLobby, data.host_username);
+                        } else if (isGame) {
+                            updatePlayerList(data.players, scoreboard, data.host_username);
                             const myPlayer = data.players.find(p => p.username === username);
-                            if (myPlayer) myScoreEl.textContent = myPlayer.score;
+                            if (myPlayer) {
+                                myScoreEl.textContent = myPlayer.score;
+                                if (myPlayer.gave_up || myPlayer.has_answered) {
+                                    guessInput.disabled = true;
+                                    submitGuessBtn.disabled = true;
+                                    giveUpBtn.disabled = true;
+                                }
+                            }
                         }
                         break;
                     case 'system_message':
                         if (data.message.toLowerCase().includes('baixando')) {
                             showLoading(data.message);
                         } else {
-                            showSystemMessage(data.message, data.level);
+                            showSystemMessage(data.message, data.level || 'info');
+                        }
+                        break;
+                    case 'guess_result':
+                        if (data.correct === false) {
+                            showSystemMessage(data.message, 'error', 2000);
                         }
                         break;
                     case 'start_round':
@@ -694,6 +725,7 @@
                         guessInput.value = '';
                         guessInput.disabled = false;
                         submitGuessBtn.disabled = false;
+                        giveUpBtn.disabled = false;
                         guessInput.focus();
                         currentRoundEl.textContent = data.round;
                         totalRoundsEl.textContent = data.total_rounds;
@@ -708,9 +740,10 @@
                     case 'round_result':
                         audio.pause();
                         audio.currentTime = 0;
-                        showSystemMessage(`A resposta era: ${data.correct_title} - ${data.correct_artist}`);
+                        showSystemMessage(`A resposta era: ${data.correct_title} - ${data.correct_artist}`, 'info', 5000);
                         guessInput.disabled = true;
                         submitGuessBtn.disabled = true;
+                        giveUpBtn.disabled = true;
                         break;
                     case 'game_over':
                         audio.pause();
@@ -726,11 +759,6 @@
                                     ${winner.username} é o vencedor!
                                 </h3>
                                 <p class="text-slate-400 text-lg">com ${winner.score} pontos</p>
-                                <div class="flex justify-center items-center mt-4 space-x-2">
-                                    <div class="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></div>
-                                    <div class="w-2 h-2 bg-yellow-400 rounded-full animate-pulse delay-75"></div>
-                                    <div class="w-2 h-2 bg-orange-400 rounded-full animate-pulse delay-150"></div>
-                                </div>
                             `;
                         } else {
                             winnerAnnouncement.innerHTML = `
@@ -771,6 +799,17 @@
                 if (e.key === 'Enter') {
                     submitGuessBtn.click();
                 }
+            });
+
+            giveUpBtn.addEventListener('click', () => {
+                sendMessage({ type: 'give_up' });
+                guessInput.disabled = true;
+                submitGuessBtn.disabled = true;
+                giveUpBtn.disabled = true;
+            });
+
+            volumeSlider.addEventListener('input', (e) => {
+                audio.volume = e.target.value / 100;
             });
             
             playAgainBtn.addEventListener('click', () => {

@@ -69,6 +69,8 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, username: str):
                 await room.start_game(username)
             elif data["type"] == "submit_guess":
                 await room.handle_guess(username, data["guess"])
+            elif data["type"] == "give_up": # Novo tipo de mensagem
+                await room.handle_give_up(username)
     except WebSocketDisconnect:
         logger.info(f"Jogador {username} desconectou da sala {room_id}")
         await room.remove_player(username)

@@ -59,9 +59,11 @@ class Player:
         self.websocket = websocket
         self.score = 0
         self.has_answered = False
+        self.gave_up = False # Novo atributo
 
     def to_dict(self):
-        return {"username": self.username, "score": self.score, "has_answered": self.has_answered}
+        # Inclui o novo atributo no dicionário
+        return {"username": self.username, "score": self.score, "has_answered": self.has_answered, "gave_up": self.gave_up}
 
 class GameRoom:
     def __init__(self, host: Player, playlist_url: str, round_duration: int):
@@ -130,27 +132,56 @@ class GameRoom:
 
     async def prepare_game_tracks(self):
         self.game_state = "PREPARING"
-        await self.broadcast({"type": "system_message", "message": "Buscando playlist e baixando músicas...", "level": "info"})
-        results = sp.playlist_tracks(self.playlist_url)
-        spotify_tracks = [item['track'] for item in results['items'] if item and item.get('track')]
-        random.shuffle(spotify_tracks)
-        selected_tracks = spotify_tracks[:self.game_settings["total_rounds"]]
+        await self.broadcast({"type": "system_message", "message": "Buscando todas as músicas da playlist...", "level": "info"})
         
-        self.game_tracks = []
-        download_tasks = []
-        for track in selected_tracks:
-            title, artist = track['name'], track['artists'][0]['name']
-            filename = f"{track['id']}.mp3"
-            filepath = Path("static/audio") / filename
-            self.game_tracks.append({"title": title, "artist": artist, "file": filename})
+        try:
+            results = sp.playlist_tracks(self.playlist_url)
+            spotify_tracks = []
+            while results:
+                spotify_tracks.extend([item['track'] for item in results['items'] if item and item.get('track')])
+                if results['next']:
+                    results = sp.next(results)
+                else:
+                    results = None
             
-            if not filepath.exists():
-                task = asyncio.to_thread(self.download_song_segment, f"{artist} - {title} audio", str(filepath), self.game_settings["round_duration"])
-                download_tasks.append(task)
-        
-        if download_tasks:
-            await asyncio.gather(*download_tasks)
-        return True
+            logger.info(f"Encontradas {len(spotify_tracks)} músicas na playlist.")
+
+            if not spotify_tracks:
+                await self.broadcast({"type": "system_message", "message": "Playlist não encontrada ou vazia.", "level": "error"})
+                return False
+
+            await self.broadcast({"type": "system_message", "message": f"{len(spotify_tracks)} músicas encontradas. Preparando o jogo...", "level": "info"})
+
+            random.shuffle(spotify_tracks)
+            # Garante que não selecionamos mais rodadas do que músicas disponíveis
+            num_rounds = min(self.game_settings["total_rounds"], len(spotify_tracks))
+            self.game_settings["total_rounds"] = num_rounds # Atualiza o número total de rodadas
+            selected_tracks = spotify_tracks[:num_rounds]
+            
+            self.game_tracks = []
+            download_tasks = []
+            for track in selected_tracks:
+                if not track or not track.get('name') or not track.get('artists'):
+                    continue # Pula faixas inválidas
+                
+                title, artist = track['name'], track['artists'][0]['name']
+                filename = f"{track['id']}.mp3"
+                filepath = Path("static/audio") / filename
+                self.game_tracks.append({"title": title, "artist": artist, "file": filename})
+                
+                if not filepath.exists():
+                    task = asyncio.to_thread(self.download_song_segment, f"{artist} - {title} audio", str(filepath), self.game_settings["round_duration"])
+                    download_tasks.append(task)
+            
+            if download_tasks:
+                await self.broadcast({"type": "system_message", "message": f"Baixando {len(download_tasks)} músicas. Isso pode levar um momento...", "level": "info"})
+                await asyncio.gather(*download_tasks)
+            
+            return True
+        except Exception as e:
+            logger.error(f"Erro ao preparar as músicas: {e}")
+            await self.broadcast({"type": "system_message", "message": "Erro ao processar a playlist do Spotify.", "level": "error"})
+            return False
 
     async def start_game(self, starter_username: str):
         if starter_username != self.host.username or self.game_state != "LOBBY": return
@@ -176,7 +207,10 @@ class GameRoom:
     async def run_next_round(self):
         self.current_round += 1
         self.current_song = self.game_tracks[self.current_round - 1]
-        for p in self.players.values(): p.has_answered = False
+        # Reseta o status de 'desistiu' e 'respondeu' para todos os jogadores
+        for p in self.players.values(): 
+            p.has_answered = False
+            p.gave_up = False
         self._round_end_event.clear()
         
         await self.broadcast_player_update()
@@ -189,22 +223,23 @@ class GameRoom:
         self.round_start_time = time.time()
         
         try:
+            # Espera o evento de fim de rodada ou o timeout
             await asyncio.wait_for(self._round_end_event.wait(), timeout=self.game_settings["round_duration"] + 2)
         except asyncio.TimeoutError:
-            pass
+            pass # O timeout é o fluxo normal se ninguém acertar
         finally:
+            # Garante que o fim da rodada seja processado
             await self.end_round()
 
     async def handle_guess(self, username: str, guess_text: str):
         player = self.players.get(username)
-        if self.game_state != "PLAYING" or not player or player.has_answered: 
+        # Impede o palpite se o jogo não estiver rodando, ou se o jogador já respondeu ou desistiu
+        if self.game_state != "PLAYING" or not player or player.has_answered or player.gave_up: 
             return
 
-        # Normaliza tanto o título correto quanto a resposta do usuário usando a nova função
         normalized_title = normalize_string(self.current_song['title'])
         normalized_guess = normalize_string(guess_text)
 
-        # A comparação agora é muito mais flexível
         is_correct = normalized_guess == normalized_title
         
         if is_correct:
@@ -216,18 +251,55 @@ class GameRoom:
             await self.broadcast({"type": "system_message", "message": f"✅ {username} acertou!", "level": "info"})
             await self.broadcast_player_update()
 
-            if all(p.has_answered for p in self.players.values()):
+            # Se todos os jogadores ativos (que não desistiram) responderam, termina a rodada
+            if all(p.has_answered or p.gave_up for p in self.players.values()):
                 self._round_end_event.set()
+        else:
+            # Envia feedback de erro apenas para o jogador que errou
+            if player.websocket:
+                try:
+                    await player.websocket.send_json({
+                        "type": "guess_result", 
+                        "correct": False, 
+                        "message": "Você errou! Tente novamente."
+                    })
+                except Exception as e:
+                    logger.warning(f"Não foi possível enviar feedback de erro para {username}: {e}")
+
+
+    async def handle_give_up(self, username: str):
+        player = self.players.get(username)
+        if self.game_state != "PLAYING" or not player or player.has_answered or player.gave_up:
+            return
+
+        player.gave_up = True
+        logger.info(f"Jogador {username} desistiu da rodada.")
+        
+        # Notifica a todos sobre a atualização do status do jogador
+        await self.broadcast_player_update()
+        
+        # Envia uma mensagem de sistema informando que o jogador desistiu
+        await self.broadcast({"type": "system_message", "message": f"⚠️ {username} desistiu da rodada!", "level": "info"})
+
+        # Se todos os jogadores desistiram ou responderam, termina a rodada
+        if all(p.has_answered or p.gave_up for p in self.players.values()):
+            logger.info("Todos os jogadores desistiram ou responderam. Encerrando a rodada.")
+            self._round_end_event.set()
+
 
     async def end_round(self):
+        # Previne chamadas múltiplas
+        if self.game_state == "ROUND_OVER":
+            return
         self.game_state = "ROUND_OVER"
+        
         await self.broadcast({
             "type": "round_result",
             "correct_title": self.current_song['title'],
             "correct_artist": self.current_song['artist']
         })
         await asyncio.sleep(5)
-        self.game_state = "PLAYING"
+        self.game_state = "PLAYING" # Prepara para a próxima rodada no loop
 
     async def end_game(self):
         self.game_state = "GAME_OVER"
