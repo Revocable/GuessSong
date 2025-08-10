@@ -1166,6 +1166,7 @@
             });
 
             startGameBtn.addEventListener('click', () => {
+                if (startGameBtn.disabled) return;
                 startGameBtn.disabled = true;
                 startGameBtn.innerHTML = '<i class="fas fa-circle-notch spinner mr-2"></i>Iniciando...';
                 sendMessage({ type: 'start_game' });
