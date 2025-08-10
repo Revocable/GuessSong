@@ -544,157 +544,158 @@
     </div>
 
     <script>
-        // Lava Lamp Background Script
-        const scene = document.getElementById('scene');
-        const crisp = document.getElementById('crisp');
-        const ctx = scene.getContext('2d', { alpha: true });
-        const ctx2 = crisp.getContext('2d', { alpha: true });
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- LAVA LAMP & AUDIO VISUALIZATION SETUP ---
+            const scene = document.getElementById('scene');
+            const crisp = document.getElementById('crisp');
+            const ctx = scene.getContext('2d', { alpha: true });
+            const ctx2 = crisp.getContext('2d', { alpha: true });
 
-        let W = window.innerWidth, H = window.innerHeight;
-        
-        function resizeLavaBackground() {
-            W = window.innerWidth;
-            H = window.innerHeight;
-            [scene, crisp].forEach(c => {
-                c.width = W;
-                c.height = H;
-            });
-        }
-        
-        window.addEventListener('resize', resizeLavaBackground);
-        resizeLavaBackground();
+            let W = window.innerWidth, H = window.innerHeight;
+            
+            function resizeLavaBackground() {
+                W = window.innerWidth;
+                H = window.innerHeight;
+                [scene, crisp].forEach(c => {
+                    c.width = W;
+                    c.height = H;
+                });
+            }
+            
+            window.addEventListener('resize', resizeLavaBackground);
+            resizeLavaBackground();
 
-        // Lava Lamp Metaballs
-        const NUM = 15;
-        const blobs = [];
-        for (let i = 0; i < NUM; i++) {
-            blobs.push({
-                x: Math.random() * W,
-                y: Math.random() * H,
-                vx: (Math.random() - 0.5) * 0.8,
-                vy: (Math.random() - 0.5) * 0.8,
-                baseR: 30 + Math.random() * 60,
-                r: 30 + Math.random() * 60,
-                hueShift: Math.random() * 40 - 10
-            });
-        }
-
-        function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
-
-        let last = performance.now();
-        function animateLavaBackground(now) {
-            requestAnimationFrame(animateLavaBackground);
-            const dt = Math.min(0.05, (now - last) / 1000);
-            last = now;
-
-            // Clear canvases
-            ctx.clearRect(0, 0, W, H);
-            ctx2.clearRect(0, 0, W, H);
-
-            // Dark background gradient
-            const bg = ctx.createLinearGradient(0, 0, 0, H);
-            bg.addColorStop(0, '#031021');
-            bg.addColorStop(1, '#000511');
-            ctx.fillStyle = bg;
-            ctx.fillRect(0, 0, W, H);
-
-            // Update blobs
-            for (let i = 0; i < blobs.length; i++) {
-                const b = blobs[i];
-
-                // Slow, organic movement
-                b.r = b.baseR * (0.9 + 0.3 * Math.sin(now * 0.001 + i));
-                b.vx += (Math.random() - 0.5) * 0.1;
-                b.vy += (Math.random() - 0.5) * 0.1;
-
-                // Limit velocity
-                b.vx = clamp(b.vx, -2, 2);
-                b.vy = clamp(b.vy, -2, 2);
-
-                b.x += b.vx * dt * 60;
-                b.y += b.vy * dt * 60;
-
-                // Wrap around edges
-                if (b.x < -b.r) b.x = W + b.r;
-                if (b.x > W + b.r) b.x = -b.r;
-                if (b.y < -b.r) b.y = H + b.r;
-                if (b.y > H + b.r) b.y = -b.r;
+            const NUM = 15;
+            const blobs = [];
+            for (let i = 0; i < NUM; i++) {
+                blobs.push({
+                    x: Math.random() * W,
+                    y: Math.random() * H,
+                    vx: (Math.random() - 0.5) * 0.8,
+                    vy: (Math.random() - 0.5) * 0.8,
+                    baseR: 30 + Math.random() * 60,
+                    r: 30 + Math.random() * 60,
+                    hueShift: Math.random() * 40 - 10
+                });
             }
 
-            // Draw blobs with blue gradient
-            for (let i = 0; i < blobs.length; i++) {
-                const bb = blobs[i];
-                const g = ctx.createRadialGradient(bb.x, bb.y, bb.r * 0.05, bb.x, bb.y, bb.r);
-                g.addColorStop(0, `rgba(130,240,255,0.8)`);
-                g.addColorStop(0.3, `rgba(${10 + bb.hueShift},${160 + bb.hueShift},${255 - bb.hueShift},0.6)`);
-                g.addColorStop(0.7, `rgba(6,80,170,0.4)`);
-                g.addColorStop(1, `rgba(2,10,30,0.0)`);
-                ctx.beginPath();
-                ctx.fillStyle = g;
-                ctx.arc(bb.x, bb.y, bb.r, 0, Math.PI * 2);
-                ctx.fill();
-            }
+            function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
-            // Crisp layer for highlights
-            for (let i = 0; i < blobs.length; i++) {
-                const b = blobs[i];
-                const radius = b.r * 0.5;
-                const g2 = ctx2.createRadialGradient(b.x - b.r * 0.12, b.y - b.r * 0.12, 0, b.x, b.y, radius);
-                g2.addColorStop(0, 'rgba(255,255,255,0.15)');
-                g2.addColorStop(0.3, 'rgba(160,230,255,0.1)');
-                g2.addColorStop(1, 'rgba(0,0,0,0.0)');
-                ctx2.beginPath();
-                ctx2.fillStyle = g2;
-                ctx2.arc(b.x, b.y, radius, 0, Math.PI * 2);
-                ctx2.fill();
-            }
+            let last = performance.now();
+            function animateLavaBackground(now) {
+                requestAnimationFrame(animateLavaBackground);
+                const dt = Math.min(0.05, (now - last) / 1000);
+                last = now;
 
-            // Blob interactions
-            for (let i = 0; i < blobs.length; i++) {
-                for (let j = i + 1; j < blobs.length; j++) {
-                    const A = blobs[i], B = blobs[j];
-                    const dx = B.x - A.x;
-                    const dy = B.y - A.y;
-                    const dist2 = dx * dx + dy * dy;
-                    const minDist = (A.r + B.r) * 0.4;
-                    if (dist2 > 1 && dist2 < (minDist * minDist)) {
-                        const dist = Math.sqrt(dist2);
-                        const push = (minDist - dist) * 0.001;
-                        const nx = dx / dist;
-                        const ny = dy / dist;
-                        A.vx -= nx * push;
-                        A.vy -= ny * push;
-                        B.vx += nx * push;
-                        B.vy += ny * push;
+                const intensity = getAudioIntensity(); // This will now correctly call the function
+                const scaleFactor = 1 + intensity * 1.2;
+                const minScaleFactor = 0.8;
+                const effectiveScaleFactor = Math.max(minScaleFactor, scaleFactor);
+
+                ctx.clearRect(0, 0, W, H);
+                ctx2.clearRect(0, 0, W, H);
+
+                const bg = ctx.createLinearGradient(0, 0, 0, H);
+                bg.addColorStop(0, '#4a0e6c');
+                bg.addColorStop(1, '#2a0845');
+                ctx.fillStyle = bg;
+                ctx.fillRect(0, 0, W, H);
+
+                for (let i = 0; i < blobs.length; i++) {
+                    const b = blobs[i];
+                    b.r = b.baseR * (0.9 + 0.3 * Math.sin(now * 0.001 + i)) * effectiveScaleFactor;
+                    b.vx += (Math.random() - 0.5) * 0.1 * effectiveScaleFactor;
+                    b.vy += (Math.random() - 0.5) * 0.1 * effectiveScaleFactor;
+                    b.vx = clamp(b.vx, -2 * effectiveScaleFactor, 2 * effectiveScaleFactor);
+                    b.vy = clamp(b.vy, -2 * effectiveScaleFactor, 2 * effectiveScaleFactor);
+                    b.x += b.vx * dt * 60;
+                    b.y += b.vy * dt * 60;
+
+                    if (b.x < -b.r) b.x = W + b.r;
+                    if (b.x > W + b.r) b.x = -b.r;
+                    if (b.y < -b.r) b.y = H + b.r;
+                    if (b.y > H + b.r) b.y = -b.r;
+                }
+
+                for (let i = 0; i < blobs.length; i++) {
+                    const bb = blobs[i];
+                    const g = ctx.createRadialGradient(bb.x, bb.y, bb.r * 0.05, bb.x, bb.y, bb.r);
+                    g.addColorStop(0, `rgba(240, 120, 255,${0.8 * effectiveScaleFactor})`);
+                    g.addColorStop(0.3, `rgba(139, 92, 246,${0.6 * effectiveScaleFactor})`);
+                    g.addColorStop(0.7, `rgba(76, 58, 173,${0.4 * effectiveScaleFactor})`);
+                    g.addColorStop(1, `rgba(18, 15, 30,0.0)`);
+                    ctx.beginPath();
+                    ctx.fillStyle = g;
+                    ctx.arc(bb.x, bb.y, bb.r, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                for (let i = 0; i < blobs.length; i++) {
+                    const b = blobs[i];
+                    const radius = b.r * 0.5;
+                    const g2 = ctx2.createRadialGradient(b.x - b.r * 0.12, b.y - b.r * 0.12, 0, b.x, b.y, radius);
+                    g2.addColorStop(0, `rgba(255,255,255,${0.15 * effectiveScaleFactor})`);
+                    g2.addColorStop(0.3, `rgba(160,230,255,${0.1 * effectiveScaleFactor})`);
+                    g2.addColorStop(1, 'rgba(0,0,0,0.0)');
+                    ctx2.beginPath();
+                    ctx2.fillStyle = g2;
+                    ctx2.arc(b.x, b.y, radius, 0, Math.PI * 2);
+                    ctx2.fill();
+                }
+
+                for (let i = 0; i < blobs.length; i++) {
+                    for (let j = i + 1; j < blobs.length; j++) {
+                        const A = blobs[i], B = blobs[j];
+                        const dx = B.x - A.x;
+                        const dy = B.y - A.y;
+                        const dist2 = dx * dx + dy * dy;
+                        const minDist = (A.r + B.r) * 0.4;
+                        if (dist2 > 1 && dist2 < (minDist * minDist)) {
+                            const dist = Math.sqrt(dist2);
+                            const push = (minDist - dist) * 0.001;
+                            const nx = dx / dist;
+                            const ny = dy / dist;
+                            A.vx -= nx * push;
+                            A.vy -= ny * push;
+                            B.vx += nx * push;
+                            B.vy += ny * push;
+                        }
                     }
                 }
+                updateParticles(intensity);
             }
-        }
-
-        // Start lava lamp animation
-        requestAnimationFrame(animateLavaBackground);
-
-        // Create animated particles (reduced count)
-        function createParticles() {
-            const particlesContainer = document.getElementById('particles');
-            const particleCount = 8; // Reduced from 20
             
-            for (let i = 0; i < particleCount; i++) {
-                const particle = document.createElement('div');
-                particle.className = 'particle';
-                particle.style.left = Math.random() * 100 + '%';
-                particle.style.animationDelay = Math.random() * 6 + 's';
-                particle.style.animationDuration = (Math.random() * 3 + 5) + 's';
-                particle.style.width = particle.style.height = (Math.random() * 3 + 1) + 'px';
-                particlesContainer.appendChild(particle);
-            }
-        }
-        
-        createParticles();
-    </script>
+            requestAnimationFrame(animateLavaBackground);
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
+            let particles = [];
+            function createParticles() {
+                const particlesContainer = document.getElementById('particles');
+                const particleCount = 8;
+                
+                for (let i = 0; i < particleCount; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = Math.random() * 100 + '%';
+                    particle.style.animationDelay = Math.random() * 6 + 's';
+                    particle.style.animationDuration = (Math.random() * 3 + 5) + 's';
+                    particle.style.width = particle.style.height = (Math.random() * 3 + 1) + 'px';
+                    particlesContainer.appendChild(particle);
+                    particles.push(particle);
+                }
+            }
+
+            function updateParticles(intensity) {
+                particles.forEach(particle => {
+                    const size = (Math.random() * 3 + 1) * (1 + intensity * 2);
+                    particle.style.width = particle.style.height = size + 'px';
+                    particle.style.opacity = 0.2 + intensity * 0.8;
+                    const speed = (Math.random() * 3 + 5) / (1 + intensity * 0.5);
+                    particle.style.animationDuration = speed + 's';
+                });
+            }
+            
+            createParticles();
+
             // --- DOM Elements ---
             const loadingOverlay = document.getElementById('loading-overlay');
             const loadingMessage = document.getElementById('loading-message');
@@ -742,21 +743,53 @@
             const playAgainNewPlaylistBtn = document.getElementById('play-again-new-playlist-btn');
             const cancelPlayAgainBtn = document.getElementById('cancel-play-again-btn');
 
-            // New DOM elements for playlist info
             const playlistInfoDisplay = document.getElementById('playlist-info-display');
             const playlistCoverImg = document.getElementById('playlist-cover-img');
             const playlistNameEl = document.getElementById('playlist-name');
             const playlistOwnerEl = document.getElementById('playlist-owner');
 
-            // --- Game State ---
+            // --- Game State & Audio Analysis ---
             let ws = null;
             let username = '';
             let roomId = '';
             let isHost = false;
             let audio = new Audio();
-            audio.volume = 0.5; // Start with 50% volume
+            audio.volume = 0.5;
+            let audioContext = null;
+            let analyser = null;
+            let dataArray = null;
+            let bufferLength = null;
             let systemMessageTimeout;
             let trackTitles = [];
+
+            function setupAudioAnalysis() {
+                if (audioContext) return; // Already set up
+                try {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const source = audioContext.createMediaElementSource(audio);
+                    analyser = audioContext.createAnalyser();
+                    source.connect(analyser);
+                    analyser.connect(audioContext.destination);
+                    analyser.fftSize = 256;
+                    bufferLength = analyser.frequencyBinCount;
+                    dataArray = new Uint8Array(bufferLength);
+                } catch (e) {
+                    console.error("Web Audio API is not supported or could not be initialized.", e);
+                }
+            }
+
+            let currentAudioIntensity = 0;
+            function getAudioIntensity() {
+                if (analyser && dataArray) {
+                    analyser.getByteFrequencyData(dataArray);
+                    let sum = 0;
+                    for (let i = 0; i < bufferLength; i++) {
+                        sum += dataArray[i];
+                    }
+                    currentAudioIntensity = (sum / bufferLength / 255) || 0;
+                }
+                return currentAudioIntensity;
+            }
 
             // --- UI Helper Functions ---
             function showLoading(message) {
@@ -898,6 +931,11 @@
                 showLoading("Criando sala...");
 
                 try {
+                    setupAudioAnalysis();
+                    if (audioContext && audioContext.state === 'suspended') {
+                        await audioContext.resume();
+                    }
+
                     const response = await fetch('/create-room', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -937,6 +975,12 @@
                     return;
                 }
                 showLoading("Entrando na sala...");
+
+                setupAudioAnalysis();
+                if (audioContext && audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                }
+
                 await connectWebSocket(code);
             }
 
@@ -967,7 +1011,7 @@
 
             function handleWebSocketMessage(data) {
                 console.log("Mensagem recebida:", data);
-                hideLoading(); // Hide loading on any message received
+                hideLoading();
                 switch (data.type) {
                     case 'error':
                         displayError(data.message);
@@ -986,7 +1030,6 @@
                         }
                         showView('lobby-view');
                         updatePlayerList(data.players, playerListLobby, data.host_username);
-                        // Update playlist info
                         if (data.playlist_name) {
                             playlistNameEl.textContent = data.playlist_name;
                             playlistOwnerEl.textContent = `by ${data.playlist_owner_name}`;
@@ -1058,7 +1101,7 @@
                         totalRoundsEl.textContent = data.total_rounds;
                         
                         timerBar.style.animation = 'none';
-                        void timerBar.offsetWidth; // Trigger reflow
+                        void timerBar.offsetWidth;
                         timerBar.style.animation = `progress ${data.duration}s linear forwards`;
                         
                         audio.src = data.song_url;
@@ -1174,7 +1217,6 @@
             });
 
             guessInput.addEventListener('blur', () => {
-                // Delay hiding so a click on a suggestion can register
                 setTimeout(() => {
                     autocompleteResults.innerHTML = '';
                     autocompleteResults.classList.add('hidden');
@@ -1237,7 +1279,6 @@
                 usernameInput.value = savedUsername;
             }
 
-            // Auto-focus username input
             usernameInput.focus();
         });
     </script>
