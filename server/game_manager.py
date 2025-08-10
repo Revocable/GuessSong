@@ -79,7 +79,7 @@ class Player:
         self.score = 0
 
 class GameRoom:
-    def __init__(self, host: Player, playlist_url: str, round_duration: int):
+    def __init__(self, host: Player, playlist_url: str, round_duration: int, total_rounds: int):
         self.room_id = "".join(random.choices("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", k=5))
         self.host = host
         self.players: Dict[str, Player] = {}
@@ -87,7 +87,7 @@ class GameRoom:
         self.playlist_name: Optional[str] = None
         self.playlist_cover_image_url: Optional[str] = None
         self.playlist_owner_name: Optional[str] = None
-        self.game_settings = {"round_duration": round_duration, "total_rounds": 10}
+        self.game_settings = {"round_duration": round_duration, "total_rounds": total_rounds}
         self.game_state = "LOBBY"
         self.current_round = 0
         self.current_song: Optional[Dict] = None
@@ -423,8 +423,8 @@ class GameManager:
     def __init__(self):
         self.rooms: Dict[str, GameRoom] = {}
 
-    def create_room(self, host: Player, playlist: str, duration: int) -> GameRoom:
-        room = GameRoom(host, playlist, duration)
+    def create_room(self, host: Player, playlist: str, duration: int, total_rounds: int) -> GameRoom:
+        room = GameRoom(host, playlist, duration, total_rounds)
         self.rooms[room.room_id] = room
         return room
 

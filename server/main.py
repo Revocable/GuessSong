@@ -18,7 +18,8 @@ app.mount("/client", StaticFiles(directory="../client/public"), name="client")
 class CreateRoomRequest(BaseModel):
     username: str
     playlist_url: str
-    round_duration: int # Nova configuração
+    round_duration: int
+    total_rounds: int
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
@@ -31,9 +32,11 @@ async def create_room(request: CreateRoomRequest):
         raise HTTPException(status_code=400, detail="URL da playlist do Spotify inválida.")
     if request.round_duration not in [15, 20, 30, 60]:
          raise HTTPException(status_code=400, detail="Duração da rodada inválida.")
+    if not (request.total_rounds > 0):
+        raise HTTPException(status_code=400, detail="Número de rodadas inválido. Deve ser um número positivo.")
     
     player = Player(request.username, None)
-    room = game_manager.create_room(player, request.playlist_url, request.round_duration)
+    room = game_manager.create_room(player, request.playlist_url, request.round_duration, request.total_rounds)
     
     # Fetch playlist details after creating the room
     success = await room.fetch_playlist_details()
@@ -41,7 +44,7 @@ async def create_room(request: CreateRoomRequest):
         game_manager.remove_room(room.room_id)
         raise HTTPException(status_code=400, detail="Could not fetch details for the provided Spotify playlist. Make sure it's a valid, public playlist.")
 
-    logger.info(f"Sala {room.room_id} criada por {request.username} com duração de {request.round_duration}s")
+    logger.info(f"Sala {room.room_id} criada por {request.username} com duração de {request.round_duration}s e {request.total_rounds} rodadas")
     return {"room_id": room.room_id}
 
 @app.websocket("/ws/{room_id}/{username}")
