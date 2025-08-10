@@ -386,7 +386,7 @@ class GameRoom:
             "correct_title": self.current_song['title'],
             "correct_artist": self.current_song['artist']
         })
-        await asyncio.sleep(5)
+        await asyncio.sleep(3)
         self.game_state = "PLAYING"
 
     async def end_game(self):
