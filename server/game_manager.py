@@ -31,22 +31,11 @@ Path("static/audio").mkdir(parents=True, exist_ok=True)
 # --- FUNÇÃO DE NORMALIZAÇÃO ATUALIZADA ---
 def normalize_string(text: str) -> str:
     text = text.lower()
-    
-    # Remove common metadata tags found in parentheses or brackets
     text = re.sub(r'\s*[\(\[].*(feat|ft|with|remix|remaster|live|edit|version|deluxe)[\)\]].*', '', text, flags=re.IGNORECASE).strip()
-    
-    # Take the part before a main separator like ' - '
     text = text.split(' - ')[0]
-    
-    # Remove any remaining parentheses or brackets
     text = re.sub(r'[\(\)\[\]]', '', text).strip()
-
-    # Remove special characters
-    text = re.sub(r"[^a-z0-9\\s']", '', text) # Keep apostrophes for now
-    
-    # Normalize spaces
+    text = re.sub(r"[^a-z0-9\\s']", '', text)
     text = ' '.join(text.split())
-    
     return text.strip()
 
 
@@ -93,8 +82,10 @@ class GameRoom:
         self.current_song: Optional[Dict] = None
         self.round_start_time = 0
         self.game_tracks: List[Dict] = []
+        self.all_playlist_titles: List[str] = []
         self.played_track_ids: Set[str] = set()
         self._round_end_event = asyncio.Event()
+        self._preparation_complete_event = asyncio.Event()
         self._round_task: Optional[asyncio.Task] = None
         self._download_tasks: List[asyncio.Task] = []
 
@@ -132,6 +123,22 @@ class GameRoom:
             self.players[player.username] = player
         else:
             self.players[player.username].websocket = player.websocket
+
+        if self._preparation_complete_event.is_set() and player.websocket:
+            try:
+                await player.websocket.send_json({
+                    "type": "playlist_details_updated",
+                    "playlist_name": self.playlist_name,
+                    "playlist_cover_image_url": self.playlist_cover_image_url,
+                    "playlist_owner_name": self.playlist_owner_name,
+                })
+                await player.websocket.send_json({
+                    "type": "game_prepared",
+                    "titles": self.all_playlist_titles
+                })
+            except Exception as e:
+                logger.warning(f"Could not send initial details to player {player.username}: {e}")
+
         await self.broadcast_player_update()
 
     async def remove_player(self, username: str):
@@ -181,10 +188,28 @@ class GameRoom:
         track['download_status'] = 'downloaded' if success else 'failed'
         logger.info(f"Track {track['title']} status: {track['download_status']}")
 
-    async def prepare_game_tracks(self):
-        self.game_state = "PREPARING"
-        await self.broadcast({"type": "system_message", "message": "Fetching playlist...", "level": "info"})
+    async def prepare_game_in_background(self):
+        logger.info(f"Room {self.room_id}: Starting background preparation.")
+        await self.fetch_playlist_details()
+        await self.broadcast({
+            "type": "playlist_details_updated",
+            "playlist_name": self.playlist_name,
+            "playlist_cover_image_url": self.playlist_cover_image_url,
+            "playlist_owner_name": self.playlist_owner_name,
+        })
+
+        success = await self.prepare_game_tracks()
+
+        if success:
+            await self.broadcast({
+                "type": "game_prepared",
+                "titles": self.all_playlist_titles
+            })
         
+        self._preparation_complete_event.set()
+        logger.info(f"Room {self.room_id}: Background preparation finished.")
+
+    async def prepare_game_tracks(self):
         try:
             results = sp.playlist_tracks(self.playlist_url)
             spotify_tracks = []
@@ -197,15 +222,14 @@ class GameRoom:
             
             logger.info(f"Found {len(spotify_tracks)} tracks in playlist.")
             
-            all_playlist_titles = [track['name'] for track in spotify_tracks if track and track.get('name')]
+            self.all_playlist_titles = [track['name'] for track in spotify_tracks if track and track.get('name')]
 
-            # Filter out already played tracks
             unplayed_tracks = [t for t in spotify_tracks if t['id'] not in self.played_track_ids]
             logger.info(f"Found {len(unplayed_tracks)} unplayed tracks.")
 
             if not unplayed_tracks:
                 await self.broadcast({"type": "system_message", "message": "No unplayed tracks found in this playlist.", "level": "error"})
-                return False, []
+                return False
 
             random.shuffle(unplayed_tracks)
             num_rounds = min(self.game_settings["total_rounds"], len(unplayed_tracks))
@@ -228,7 +252,6 @@ class GameRoom:
                 }
                 self.game_tracks.append(track_info)
 
-            # Start downloads in the background
             self._download_tasks = []
             for track in self.game_tracks:
                 if track['download_status'] == 'pending':
@@ -236,37 +259,37 @@ class GameRoom:
                     track['download_task'] = task
                     self._download_tasks.append(task)
 
-            return True, all_playlist_titles
+            return True
         except Exception as e:
             logger.error(f"Error preparing tracks: {e}")
             await self.broadcast({"type": "system_message", "message": "Error processing Spotify playlist.", "level": "error"})
-            return False, []
+            return False
 
     async def start_game(self, starter_username: str):
         if starter_username != self.host.username or self.game_state not in ["LOBBY", "GAME_OVER"]:
             return
         
-        for player in self.players.values():
-            player.reset_for_new_game()
-        self.current_round = 0
+        await self.broadcast({"type": "system_message", "message": "Starting game, preparing first round...", "level": "info"})
         
-        if self.game_tracks:
-            self.played_track_ids.update(t['id'] for t in self.game_tracks)
+        await self._preparation_complete_event.wait()
 
-        success, all_titles = await self.prepare_game_tracks()
-        if not success or not self.game_tracks:
+        if not self.game_tracks:
             self.game_state = "LOBBY"
             await self.broadcast({"type": "system_message", "message": "Could not prepare any tracks for the game.", "level": "error"})
             return
 
-        # Wait for the FIRST song to be downloaded before officially starting
+        for player in self.players.values():
+            player.reset_for_new_game()
+        self.current_round = 0
+        self.played_track_ids.update(t['id'] for t in self.game_tracks)
+
         first_track = self.game_tracks[0]
         if first_track['download_status'] != 'downloaded':
             await self.broadcast({"type": "system_message", "message": "Downloading the first song to begin...", "level": "info"})
             
             if first_track['download_task']:
                 try:
-                    await asyncio.wait_for(first_track['download_task'], timeout=120) # 2-minute timeout for download
+                    await asyncio.wait_for(first_track['download_task'], timeout=120)
                 except asyncio.TimeoutError:
                     logger.error(f"Timeout downloading first track: {first_track['title']}")
                     first_track['download_status'] = 'failed'
@@ -275,12 +298,6 @@ class GameRoom:
             self.game_state = "LOBBY"
             await self.broadcast({"type": "system_message", "message": "Failed to download the first song. Please try again.", "level": "error"})
             return
-
-        # Send all titles for autocomplete
-        await self.broadcast({
-            "type": "game_prepared",
-            "titles": all_titles
-        })
 
         self.game_state = "PLAYING"
         await self.broadcast_player_update()
@@ -297,12 +314,11 @@ class GameRoom:
         self.current_round += 1
         self.current_song = self.game_tracks[self.current_round - 1]
 
-        # Wait for the song to be downloaded
         while self.current_song['download_status'] != 'downloaded':
             if self.current_song['download_status'] == 'failed':
                 await self.broadcast({"type": "system_message", "message": f"Could not download song for this round, skipping...", "level": "error"})
                 await asyncio.sleep(3)
-                return # Skip to the next iteration of game_loop
+                return
 
             await self.broadcast({"type": "system_message", "message": f"Downloading song for round {self.current_round}... please wait.", "level": "info"})
             await asyncio.sleep(1)
@@ -408,13 +424,10 @@ class GameRoom:
 
         if new_playlist_url:
             self.playlist_url = new_playlist_url
-            await self.fetch_playlist_details()
-            await self.broadcast({
-                "type": "playlist_details_updated",
-                "playlist_name": self.playlist_name,
-                "playlist_cover_image_url": self.playlist_cover_image_url,
-                "playlist_owner_name": self.playlist_owner_name,
-            })
+            self._preparation_complete_event.clear()
+            self.game_tracks = []
+            self.all_playlist_titles = []
+            asyncio.create_task(self.prepare_game_in_background())
 
         await self.start_game(starter_username)
 
@@ -426,6 +439,7 @@ class GameManager:
     def create_room(self, host: Player, playlist: str, duration: int, total_rounds: int) -> GameRoom:
         room = GameRoom(host, playlist, duration, total_rounds)
         self.rooms[room.room_id] = room
+        asyncio.create_task(room.prepare_game_in_background())
         return room
 
     def get_room(self, room_id: str) -> Optional[GameRoom]:
