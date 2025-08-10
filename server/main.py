@@ -33,8 +33,14 @@ async def create_room(request: CreateRoomRequest):
          raise HTTPException(status_code=400, detail="Duração da rodada inválida.")
     
     player = Player(request.username, None)
-    # Passa a duração para o game manager
     room = game_manager.create_room(player, request.playlist_url, request.round_duration)
+    
+    # Fetch playlist details after creating the room
+    success = await room.fetch_playlist_details()
+    if not success:
+        game_manager.remove_room(room.room_id)
+        raise HTTPException(status_code=400, detail="Could not fetch details for the provided Spotify playlist. Make sure it's a valid, public playlist.")
+
     logger.info(f"Sala {room.room_id} criada por {request.username} com duração de {request.round_duration}s")
     return {"room_id": room.room_id}
 
@@ -59,7 +65,10 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, username: str):
         "room_id": room.room_id,
         "is_host": username == room.host.username,
         "host_username": room.host.username,
-        "players": [p.to_dict() for p in room.players.values()]
+        "players": [p.to_dict() for p in room.players.values()],
+        "playlist_name": room.playlist_name,
+        "playlist_cover_image_url": room.playlist_cover_image_url,
+        "playlist_owner_name": room.playlist_owner_name,
     })
 
     try:

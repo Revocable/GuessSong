@@ -322,6 +322,16 @@
                 </div>
             </div>
 
+            <!-- Playlist Info Display -->
+            <div id="playlist-info-display" class="flex items-center glass-light p-4 rounded-2xl mb-8">
+                <img id="playlist-cover-img" src="" alt="Playlist Cover" class="w-24 h-24 rounded-lg mr-4 shadow-lg">
+                <div>
+                    <p class="text-slate-400 text-sm">Playlist Atual</p>
+                    <h3 id="playlist-name" class="text-xl font-bold text-white"></h3>
+                    <p id="playlist-owner" class="text-slate-400 text-sm"></p>
+                </div>
+            </div>
+
             <div class="mb-8">
                 <div class="flex items-center mb-4">
                     <i class="fas fa-users text-purple-400 mr-3 text-xl"></i>
@@ -382,8 +392,10 @@
                 
                 <div class="flex items-center space-x-3">
                     <div class="flex-1 relative">
+                        <div id="autocomplete-results" class="hidden absolute bottom-full left-0 right-0 bg-slate-700 rounded-lg shadow-lg z-10 overflow-hidden mb-1 max-h-48 overflow-y-auto"></div>
                         <i class="fas fa-music absolute left-4 top-1/2 transform -translate-y-1/2 text-purple-400"></i>
                         <input type="text" id="guess-input" placeholder="Qual o nome da música ou artista?" 
+                               autocomplete="off"
                                class="w-full bg-slate-800/50 text-white pl-12 pr-4 py-4 rounded-xl border border-slate-700/50 focus:border-purple-500 focus:outline-none input-glow text-lg">
                     </div>
                     <button id="submit-guess-btn" class="gradient-primary hover:shadow-lg p-4 rounded-xl font-bold transition-all btn-hover">
@@ -517,6 +529,7 @@
             const scoreboard = document.getElementById('scoreboard');
             const giveUpBtn = document.getElementById('give-up-btn');
             const volumeSlider = document.getElementById('volume-slider');
+            const autocompleteResults = document.getElementById('autocomplete-results');
 
             const winnerAnnouncement = document.getElementById('winner-announcement');
             const finalScoreboard = document.getElementById('final-scoreboard');
@@ -529,6 +542,12 @@
             const playAgainNewPlaylistBtn = document.getElementById('play-again-new-playlist-btn');
             const cancelPlayAgainBtn = document.getElementById('cancel-play-again-btn');
 
+            // New DOM elements for playlist info
+            const playlistInfoDisplay = document.getElementById('playlist-info-display');
+            const playlistCoverImg = document.getElementById('playlist-cover-img');
+            const playlistNameEl = document.getElementById('playlist-name');
+            const playlistOwnerEl = document.getElementById('playlist-owner');
+
             // --- Game State ---
             let ws = null;
             let username = '';
@@ -537,6 +556,7 @@
             let audio = new Audio();
             audio.volume = 0.5; // Start with 50% volume
             let systemMessageTimeout;
+            let trackTitles = [];
 
             // --- UI Helper Functions ---
             function showLoading(message) {
@@ -748,6 +768,18 @@
                         }
                         showView('lobby-view');
                         updatePlayerList(data.players, playerListLobby, data.host_username);
+                        // Update playlist info
+                        if (data.playlist_name) {
+                            playlistNameEl.textContent = data.playlist_name;
+                            playlistOwnerEl.textContent = `by ${data.playlist_owner_name}`;
+                            playlistCoverImg.src = data.playlist_cover_image_url || 'https://via.placeholder.com/96x96?text=No+Image';
+                            playlistInfoDisplay.classList.remove('hidden');
+                        } else {
+                            playlistInfoDisplay.classList.add('hidden');
+                        }
+                        break;
+                    case 'game_prepared':
+                        trackTitles = data.titles;
                         break;
                     case 'update_players':
                         const isLobby = lobbyView.offsetParent !== null;
@@ -760,12 +792,22 @@
                             const myPlayer = data.players.find(p => p.username === username);
                             if (myPlayer) {
                                 myScoreEl.textContent = myPlayer.score;
-                                if (myPlayer.gave_up || myPlayer.has_answered) {
+                                if (myPlayer.gave_up || my.has_answered) {
                                     guessInput.disabled = true;
                                     submitGuessBtn.disabled = true;
                                     giveUpBtn.disabled = true;
                                 }
                             }
+                        }
+                        break;
+                    case 'playlist_details_updated':
+                        if (data.playlist_name) {
+                            playlistNameEl.textContent = data.playlist_name;
+                            playlistOwnerEl.textContent = `by ${data.playlist_owner_name}`;
+                            playlistCoverImg.src = data.playlist_cover_image_url || 'https://via.placeholder.com/96x96?text=No+Image';
+                            playlistInfoDisplay.classList.remove('hidden');
+                        } else {
+                            playlistInfoDisplay.classList.add('hidden');
                         }
                         break;
                     case 'system_message':
@@ -861,6 +903,8 @@
                 if (guess && !guessInput.disabled) {
                     sendMessage({ type: 'submit_guess', guess: guess });
                     guessInput.value = '';
+                    autocompleteResults.innerHTML = '';
+                    autocompleteResults.classList.add('hidden');
                 }
             });
             
@@ -868,6 +912,43 @@
                 if (e.key === 'Enter') {
                     submitGuessBtn.click();
                 }
+            });
+
+            guessInput.addEventListener('input', () => {
+                const value = guessInput.value.toLowerCase();
+                autocompleteResults.innerHTML = '';
+                if (!value) {
+                    autocompleteResults.classList.add('hidden');
+                    return;
+                }
+
+                const filteredTitles = trackTitles.filter(title => title.toLowerCase().startsWith(value)).slice(0, 5);
+                
+                if (filteredTitles.length > 0) {
+                    filteredTitles.forEach(title => {
+                        const item = document.createElement('div');
+                        item.className = 'p-3 hover:bg-slate-600 cursor-pointer';
+                        item.textContent = title;
+                        item.addEventListener('click', () => {
+                            guessInput.value = title;
+                            autocompleteResults.innerHTML = '';
+                            autocompleteResults.classList.add('hidden');
+                            submitGuessBtn.click();
+                        });
+                        autocompleteResults.appendChild(item);
+                    });
+                    autocompleteResults.classList.remove('hidden');
+                } else {
+                    autocompleteResults.classList.add('hidden');
+                }
+            });
+
+            guessInput.addEventListener('blur', () => {
+                // Delay hiding so a click on a suggestion can register
+                setTimeout(() => {
+                    autocompleteResults.innerHTML = '';
+                    autocompleteResults.classList.add('hidden');
+                }, 200);
             });
 
             giveUpBtn.addEventListener('click', () => {
