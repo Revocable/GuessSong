@@ -87,6 +87,11 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, username: str):
             "playlist_cover_image_url": room.playlist_cover_image_url,
         })
 
+        # If the host connects and the first track is already ready, notify them.
+        if username == room.host.username and room.first_track_ready:
+            logger.info(f"Host {username} connected and first track is ready. Notifying host.")
+            await websocket.send_json({"type": "host_ready_to_start"})
+
         while True:
             data = await websocket.receive_json()
             logger.info(f"Received from {username} in {room_id}: {data}")

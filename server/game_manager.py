@@ -129,6 +129,15 @@ class GameRoom:
             # If a player reconnects, update their websocket object
             self.players[player.username].websocket = player.websocket
 
+        # If the game has already been prepared, the new player needs the track titles
+        # for the autocomplete functionality.
+        if self._preparation_complete_event.is_set() and player.websocket:
+            try:
+                logger.info(f"Sending prepared game details to late-joining player: {player.username}")
+                await player.websocket.send_json({"type": "game_prepared", "titles": self.all_playlist_titles})
+            except Exception as e:
+                logger.warning(f"Could not send prepared game details to player {player.username}: {e}")
+
         # After adding, broadcast the new player list to everyone in the room
         await self.broadcast_player_update()
 
@@ -333,6 +342,7 @@ class GameRoom:
             player.score += max(10, 100 - int(time_taken * 5))
             player.has_answered = True
             player.guess_time = time_taken
+            logger.info(f"Player {username} guessed correctly. New score: {player.score}")
             await self.broadcast({"type": "system_message", "message": f"✅ {username} acertou em {time_taken:.1f}s!", "level": "info"})
             await self.broadcast_player_update()
             if all(p.has_answered or p.gave_up for p in self.players.values()): self._round_end_event.set()
@@ -352,6 +362,8 @@ class GameRoom:
     async def end_round(self):
         if self.game_state == "ROUND_OVER": return
         self.game_state = "ROUND_OVER"
+        for p in self.players.values():
+            logger.info(f"Player {p.username} score at end of round: {p.score}")
         await self.broadcast({"type": "round_result", "correct_title": self.current_song['title'], "correct_artist": self.current_song['artist']})
         await asyncio.sleep(3)
         self.game_state = "PLAYING"
