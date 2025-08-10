@@ -50,47 +50,67 @@ async def create_room(request: CreateRoomRequest):
 @app.websocket("/ws/{room_id}/{username}")
 async def websocket_endpoint(websocket: WebSocket, room_id: str, username: str):
     await websocket.accept()
-    
     room = game_manager.get_room(room_id)
+
     if not room:
+        logger.warning(f"Connection attempt to non-existent room {room_id}")
         await websocket.send_json({"type": "error", "message": "Sala não encontrada."})
-        await websocket.close(); return
+        await websocket.close(code=4004)
+        return
 
-    if username in room.players and room.players[username].websocket is not None:
-        await websocket.send_json({"type": "error", "message": f"Nome '{username}' já em uso."})
-        await websocket.close(); return
-
-    player = Player(username, websocket)
-    await room.add_player(player)
-    
-    await websocket.send_json({
-        "type": "room_joined",
-        "room_id": room.room_id,
-        "is_host": username == room.host.username,
-        "host_username": room.host.username,
-        "players": [p.to_dict() for p in room.players.values()],
-        "playlist_name": room.playlist_name,
-        "playlist_cover_image_url": room.playlist_cover_image_url,
-        "playlist_owner_name": room.playlist_owner_name,
-    })
+    # Unify player object handling. The host is created first, then connects.
+    # Other players are created when they connect.
+    if username == room.host.username:
+        player = room.host
+        player.websocket = websocket
+    else:
+        # Check if a player with the same name is already connected.
+        if username in room.players and room.players[username].websocket:
+            await websocket.send_json({"type": "error", "message": f"O nome de usuário '{username}' já está em uso nesta sala."})
+            await websocket.close(code=4009)
+            return
+        player = Player(username=username, websocket=websocket)
 
     try:
+        await room.add_player(player)
+        logger.info(f"Player {username} connected to room {room_id}.")
+        
+        # CRITICAL FIX: Send the room_joined event to the client that just connected.
+        await websocket.send_json({
+            "type": "room_joined",
+            "room_id": room.room_id,
+            "is_host": username == room.host.username,
+            "players": [p.to_dict() for p in room.players.values()],
+            "host_username": room.host.username,
+            "playlist_name": room.playlist_name,
+            "playlist_owner_name": room.playlist_owner_name,
+            "playlist_cover_image_url": room.playlist_cover_image_url,
+        })
+
         while True:
             data = await websocket.receive_json()
-            if data["type"] == "start_game":
+            logger.info(f"Received from {username} in {room_id}: {data}")
+            
+            if data['type'] == 'start_game':
                 await room.start_game(username)
-            elif data["type"] == "submit_guess":
-                await room.handle_guess(username, data["guess"])
-            elif data["type"] == "give_up": # Novo tipo de mensagem
+            elif data['type'] == 'submit_guess':
+                await room.handle_guess(username, data['guess'])
+            elif data['type'] == 'give_up':
                 await room.handle_give_up(username)
-            elif data["type"] == "play_again":
-                new_playlist_url = data.get("playlist_url")
-                await room.reset_for_new_game(new_playlist_url, username)
+            elif data['type'] == 'play_again':
+                await room.reset_for_new_game(data.get('playlist_url'), username)
+
     except WebSocketDisconnect:
-        logger.info(f"Jogador {username} desconectou da sala {room_id}")
+        logger.info(f"Player {username} disconnected from room {room_id}")
         await room.remove_player(username)
         if not room.players:
             game_manager.remove_room(room_id)
+    except Exception as e:
+        logger.error(f"Error in websocket for {username} in {room_id}: {e}", exc_info=True)
+        await room.remove_player(username)
+        # Ensure the websocket is closed on unexpected errors
+        if not websocket.client_state == 'DISCONNECTED':
+            await websocket.close(code=1011)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

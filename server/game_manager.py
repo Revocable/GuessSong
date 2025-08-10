@@ -44,7 +44,7 @@ def normalize_string(text: str) -> str:
     text = text.lower()
     text = re.sub(r'\s*[\(\[].*(feat|ft|with|remix|remaster|live|edit|version|deluxe)[\)\]].*', '', text, flags=re.IGNORECASE).strip()
     text = text.split(' - ')[0]
-    text = re.sub(r'[\(\)[\]]', '', text).strip()
+    text = re.sub(r'[\(\)\[\]]', '', text).strip()
     text = re.sub(r"[^a-z0-9\\s']", '', text)
     text = ' '.join(text.split())
     return text.strip()
@@ -87,6 +87,7 @@ class GameRoom:
         self.game_tracks: List[Dict] = []
         self.all_playlist_titles: List[str] = []
         self.played_track_ids: Set[str] = set()
+        self.first_track_ready = False
         self._round_end_event = asyncio.Event()
         self._preparation_complete_event = asyncio.Event()
         self._round_task: Optional[asyncio.Task] = None
@@ -107,7 +108,7 @@ class GameRoom:
 
     async def broadcast(self, message: dict, to_host_only=False):
         if to_host_only:
-            websockets = [self.host.websocket] if self.host.websocket else []
+            websockets = [self.host.websocket] if self.host.websocket and self.host.username in self.players else []
         else:
             websockets = [p.websocket for p in self.players.values() if p.websocket]
         
@@ -125,21 +126,16 @@ class GameRoom:
         if player.username not in self.players:
             self.players[player.username] = player
         else:
+            # If a player reconnects, update their websocket object
             self.players[player.username].websocket = player.websocket
 
-        if self._preparation_complete_event.is_set() and player.websocket:
-            try:
-                await player.websocket.send_json({"type": "playlist_details_updated", "playlist_name": self.playlist_name, "playlist_cover_image_url": self.playlist_cover_image_url, "playlist_owner_name": self.playlist_owner_name})
-                await player.websocket.send_json({"type": "game_prepared", "titles": self.all_playlist_titles})
-            except Exception as e:
-                logger.warning(f"Could not send initial details to player {player.username}: {e}")
-
+        # After adding, broadcast the new player list to everyone in the room
         await self.broadcast_player_update()
 
     async def remove_player(self, username: str):
         if username in self.players:
-            player = self.players.pop(username)
-            if not self.players or player.username == self.host.username:
+            self.players.pop(username)
+            if not self.players or username == self.host.username:
                 self.game_state = "GAME_OVER"
                 if self._round_task: self._round_task.cancel()
                 for task in self._download_tasks: task.cancel()
@@ -199,11 +195,21 @@ class GameRoom:
             logger.info(f"Room {self.room_id}: Rematch preparation complete, starting game automatically.")
             await self.start_game(starter_username)
         else:
-            if self.game_tracks and self.game_tracks[0]['download_task']:
-                await self.game_tracks[0]['download_task']
-                if self.game_tracks[0]['download_status'] == 'downloaded':
-                    logger.info(f"Room {self.room_id}: First track downloaded. Notifying host.")
-                    await self.broadcast({"type": "host_ready_to_start"}, to_host_only=True)
+            # Integrated host notification logic. This runs after preparation is done.
+            if self.game_tracks:
+                first_track = self.game_tracks[0]
+                # If there's a download task, wait for it to complete
+                if first_track.get('download_task'):
+                    await first_track['download_task']
+                
+                # After waiting (or if no task existed, e.g., cached), check status
+                if first_track['download_status'] == 'downloaded':
+                    logger.info(f"Room {self.room_id}: First track is ready.")
+                    self.first_track_ready = True
+                    # This check ensures we notify a host that is already connected.
+                    if self.host.username in self.players and self.players[self.host.username].websocket:
+                        logger.info(f"Room {self.room_id}: Host is connected. Notifying host.")
+                        await self.broadcast({"type": "host_ready_to_start"}, to_host_only=True)
 
     async def prepare_game_tracks(self):
         try:
@@ -300,7 +306,15 @@ class GameRoom:
         self._round_end_event.clear()
         
         await self.broadcast_player_update()
-        await self.broadcast({"type": "start_round", "round": self.current_round, "total_rounds": len(self.game_tracks), "duration": self.game_settings["round_duration"], "song_url": f"/static/audio/{self.current_song['file']}"})
+        await self.broadcast({"type": "round_countdown"})
+        await asyncio.sleep(4.1)
+
+        await self.broadcast({
+            "type": "start_round",
+            "round": self.current_round, "total_rounds": len(self.game_tracks),
+            "duration": self.game_settings["round_duration"],
+            "song_url": f"/static/audio/{self.current_song['file']}"
+        })
         self.round_start_time = time.time()
         
         try:
@@ -363,6 +377,7 @@ class GameRoom:
         self.game_state = "LOBBY"
         self.game_tracks = []
         self.all_playlist_titles = []
+        self.first_track_ready = False
         self._preparation_complete_event.clear()
         for task in self._download_tasks: task.cancel()
         self._download_tasks = []

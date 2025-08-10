@@ -22,14 +22,13 @@
         
         body { 
             font-family: 'Inter', sans-serif; 
-            background: #070712;
+            background: #120f1e;
             min-height: 100vh;
             overflow-x: hidden;
         }
         
         .hidden { display: none !important; }
         
-        /* Lava Lamp Background */
         #lava-background {
             position: fixed;
             top: 0;
@@ -54,7 +53,6 @@
             opacity: 0.6;
         }
         
-        /* Glass morphism effect */
         .glass {
             background: rgba(15, 23, 42, 0.85);
             backdrop-filter: blur(20px);
@@ -68,24 +66,11 @@
             border: 1px solid rgba(148, 163, 184, 0.15);
         }
         
-        /* Gradient backgrounds */
-        .gradient-primary {
-            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-        }
+        .gradient-primary { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); }
+        .gradient-secondary { background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); }
+        .gradient-success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+        .gradient-accent { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
         
-        .gradient-secondary {
-            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
-        }
-        
-        .gradient-success {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        }
-        
-        .gradient-accent {
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        }
-        
-        /* Animated background */
         .bg-animated {
             background-size: 400% 400%;
             animation: gradientShift 8s ease infinite;
@@ -97,145 +82,83 @@
             100% { background-position: 0% 50%; }
         }
         
-        /* Progress bar animation */
         @keyframes progress {
             from { width: 100%; }
             to { width: 0%; }
         }
         
-        .progress-bar-animate {
-            animation: progress linear forwards;
-        }
+        .progress-bar-animate { animation: progress linear forwards; }
         
-        /* Floating animations */
         @keyframes float {
             0%, 100% { transform: translateY(0px); }
             50% { transform: translateY(-10px); }
         }
         
-        .float {
-            animation: float 3s ease-in-out infinite;
-        }
+        .float { animation: float 3s ease-in-out infinite; }
         
-        /* Pulse effect */
         @keyframes pulse-glow {
             0%, 100% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.5); }
             50% { box-shadow: 0 0 40px rgba(139, 92, 246, 0.8), 0 0 60px rgba(139, 92, 246, 0.4); }
         }
         
-        .pulse-glow {
-            animation: pulse-glow 2s ease-in-out infinite;
-        }
+        .pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
         
-        /* Spinner */
         @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
         
-        .spinner {
-            animation: spin 1s linear infinite;
-        }
+        .spinner { animation: spin 1s linear infinite; }
         
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(139, 92, 246, 0.6); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(139, 92, 246, 0.8); }
         
-        ::-webkit-scrollbar-track {
-            background: rgba(15, 23, 42, 0.5);
-            border-radius: 4px;
-        }
+        .btn-hover { transition: all 0.3s ease; transform: translateY(0); }
+        .btn-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3); }
         
-        ::-webkit-scrollbar-thumb {
-            background: rgba(139, 92, 246, 0.6);
-            border-radius: 4px;
-        }
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-5px); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); }
         
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(139, 92, 246, 0.8);
-        }
+        .input-glow { transition: all 0.3s ease; }
+        .input-glow:focus { box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.3), 0 0 20px rgba(139, 92, 246, 0.2); }
         
-        /* Button hover effects */
-        .btn-hover {
-            transition: all 0.3s ease;
-            transform: translateY(0);
-        }
+        .neon-text { text-shadow: 0 0 10px rgba(139, 92, 246, 0.8), 0 0 20px rgba(139, 92, 246, 0.5); }
         
-        .btn-hover:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-        }
-        
-        /* Card hover effects */
-        .card-hover {
-            transition: all 0.3s ease;
-        }
-        
-        .card-hover:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
-        }
-        
-        /* Input focus effects */
-        .input-glow {
-            transition: all 0.3s ease;
-        }
-        
-        .input-glow:focus {
-            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.3), 0 0 20px rgba(139, 92, 246, 0.2);
-        }
-        
-        /* Neon text effect */
-        .neon-text {
-            text-shadow: 0 0 10px rgba(139, 92, 246, 0.8), 0 0 20px rgba(139, 92, 246, 0.5);
-        }
-        
-        /* Particle background - reduced since we have lava lamp */
-        .particles {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: -1;
-            opacity: 0.3;
-        }
-        
-        .particle {
-            position: absolute;
-            background: rgba(139, 92, 246, 0.2);
-            border-radius: 50%;
-            animation: particleFloat 8s ease-in-out infinite;
-        }
+        .particles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1; opacity: 0.3; }
+        .particle { position: absolute; background: rgba(139, 92, 246, 0.2); border-radius: 50%; animation: particleFloat 8s ease-in-out infinite; }
         
         @keyframes particleFloat {
             0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0; }
             10%, 90% { opacity: 1; }
             50% { transform: translateY(-50px) rotate(180deg); }
         }
+
+        @keyframes countdown-zoom {
+            0% { transform: scale(0.5); opacity: 0; }
+            20% { transform: scale(1.2); opacity: 1; }
+            80% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+        .countdown-animate {
+            animation: countdown-zoom 1s ease-in-out forwards;
+            text-shadow: 0 0 10px var(--neon-color), 0 0 20px var(--neon-color), 0 0 40px var(--neon-color);
+        }
         
-        /* Responsive breakpoints */
         @media (max-width: 640px) {
-            .glass {
-                margin: 0.5rem;
-                padding: 1.5rem;
-            }
+            .glass { margin: 0.5rem; padding: 1.5rem; }
         }
     </style>
 </head>
 <body class="text-white min-h-screen p-2 sm:p-4 overflow-x-hidden">
-    <!-- Lava Lamp Background -->
     <div id="lava-background">
         <canvas id="scene"></canvas>
         <canvas id="crisp"></canvas>
     </div>
     
-    <!-- Animated background particles (reduced) -->
     <div class="particles" id="particles"></div>
     
-    <!-- Loading overlay with modern design -->
     <div id="loading-overlay" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center z-50">
         <div class="glass p-8 rounded-3xl text-center max-w-sm mx-4">
             <div class="relative mb-6">
@@ -252,9 +175,7 @@
     </div>
 
     <div id="main-container" class="w-full max-w-4xl mx-auto relative z-10">
-        <!-- Entry View - Modern hero section -->
         <div id="entry-view" class="glass rounded-3xl p-6 sm:p-8 lg:p-12 text-center card-hover">
-            <!-- Hero section -->
             <div class="mb-8">
                 <div class="relative inline-block">
                     <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent mb-4 neon-text">
@@ -270,7 +191,6 @@
                 </div>
             </div>
 
-            <!-- Username input -->
             <div class="mb-8">
                 <div class="relative max-w-md mx-auto">
                     <i class="fas fa-user absolute left-4 top-1/2 transform -translate-y-1/2 text-purple-400"></i>
@@ -280,7 +200,6 @@
             </div>
 
             <div class="grid lg:grid-cols-2 gap-6 lg:gap-8">
-                <!-- Create Room Section -->
                 <div class="glass-light p-6 rounded-2xl border border-purple-500/20 card-hover">
                     <div class="text-center mb-6">
                         <div class="w-12 h-12 mx-auto mb-4 bg-gradient-primary rounded-xl flex items-center justify-center">
@@ -307,38 +226,17 @@
                             </select>
                         </div>
                         
-                        <!-- Rounds Selection -->
                         <div>
                             <label class="block text-slate-400 text-sm font-medium mb-2">Número de Rodadas</label>
                             <div class="flex flex-wrap gap-3">
-                                <label class="inline-flex items-center">
-                                    <input type="radio" name="rounds" value="5" class="form-radio text-purple-500" checked>
-                                    <span class="ml-2 text-white">5</span>
-                                </label>
-                                <label class="inline-flex items-center">
-                                    <input type="radio" name="rounds" value="7" class="form-radio text-purple-500">
-                                    <span class="ml-2 text-white">7</span>
-                                </label>
-                                <label class="inline-flex items-center">
-                                    <input type="radio" name="rounds" value="10" class="form-radio text-purple-500">
-                                    <span class="ml-2 text-white">10</span>
-                                </label>
-                                <label class="inline-flex items-center">
-                                    <input type="radio" name="rounds" value="15" class="form-radio text-purple-500">
-                                    <span class="ml-2 text-white">15</span>
-                                </label>
-                                <label class="inline-flex items-center">
-                                    <input type="radio" name="rounds" value="20" class="form-radio text-purple-500">
-                                    <span class="ml-2 text-white">20</span>
-                                </label>
-                                <label class="inline-flex items-center">
-                                    <input type="radio" name="rounds" value="custom" class="form-radio text-purple-500">
-                                    <span class="ml-2 text-white">Custom</span>
-                                </label>
+                                <label class="inline-flex items-center"><input type="radio" name="rounds" value="5" class="form-radio text-purple-500" checked><span class="ml-2 text-white">5</span></label>
+                                <label class="inline-flex items-center"><input type="radio" name="rounds" value="7" class="form-radio text-purple-500"><span class="ml-2 text-white">7</span></label>
+                                <label class="inline-flex items-center"><input type="radio" name="rounds" value="10" class="form-radio text-purple-500"><span class="ml-2 text-white">10</span></label>
+                                <label class="inline-flex items-center"><input type="radio" name="rounds" value="15" class="form-radio text-purple-500"><span class="ml-2 text-white">15</span></label>
+                                <label class="inline-flex items-center"><input type="radio" name="rounds" value="20" class="form-radio text-purple-500"><span class="ml-2 text-white">20</span></label>
+                                <label class="inline-flex items-center"><input type="radio" name="rounds" value="custom" class="form-radio text-purple-500"><span class="ml-2 text-white">Custom</span></label>
                             </div>
-                            <input type="number" id="custom-rounds-input" placeholder="Rodadas customizadas" 
-                                   class="hidden w-full bg-slate-800/50 text-white pl-4 pr-4 py-3 rounded-xl border border-slate-700/50 focus:border-purple-500 focus:outline-none input-glow mt-3"
-                                   min="1" max="99">
+                            <input type="number" id="custom-rounds-input" placeholder="Rodadas customizadas" class="hidden w-full bg-slate-800/50 text-white pl-4 pr-4 py-3 rounded-xl border border-slate-700/50 focus:border-purple-500 focus:outline-none input-glow mt-3" min="1" max="99">
                         </div>
 
                         <button id="create-room-btn" class="w-full gradient-primary hover:shadow-lg p-4 rounded-xl font-bold text-lg transition-all btn-hover pulse-glow">
@@ -347,7 +245,6 @@
                     </div>
                 </div>
 
-                <!-- Join Room Section -->
                 <div class="glass-light p-6 rounded-2xl border border-cyan-500/20 card-hover">
                     <div class="text-center mb-6">
                         <div class="w-12 h-12 mx-auto mb-4 gradient-secondary rounded-xl flex items-center justify-center">
@@ -360,8 +257,7 @@
                     <div class="space-y-4">
                         <div class="relative">
                             <i class="fas fa-key absolute left-4 top-1/2 transform -translate-y-1/2 text-amber-400"></i>
-                            <input type="text" id="room-code-input" placeholder="Código da sala" 
-                                   class="w-full bg-slate-800/50 text-white pl-12 pr-4 py-3 rounded-xl border border-slate-700/50 focus:border-amber-500 focus:outline-none input-glow font-mono text-center tracking-wider">
+                            <input type="text" id="room-code-input" placeholder="Código da sala" class="w-full bg-slate-800/50 text-white pl-12 pr-4 py-3 rounded-xl border border-slate-700/50 focus:border-amber-500 focus:outline-none input-glow font-mono text-center tracking-wider">
                         </div>
                         
                         <button id="join-room-btn" class="w-full gradient-success hover:shadow-lg p-4 rounded-xl font-bold text-lg transition-all btn-hover">
@@ -374,7 +270,6 @@
             <p id="error-message" class="text-red-400 mt-6 h-6 font-medium"></p>
         </div>
 
-        <!-- Lobby View -->
         <div id="lobby-view" class="hidden glass rounded-3xl p-6 sm:p-8">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 space-y-4 sm:space-y-0">
                 <div>
@@ -383,13 +278,11 @@
                 </div>
                 <div class="glass-light p-4 rounded-2xl text-center">
                     <p class="text-slate-400 text-sm mb-1">Código da Sala</p>
-                    <button id="room-code-display" class="gradient-accent text-black font-bold text-xl px-4 py-2 rounded-lg font-mono tracking-wider hover:scale-105 transition-transform" 
-                            title="Clique para copiar"></button>
+                    <button id="room-code-display" class="gradient-accent text-black font-bold text-xl px-4 py-2 rounded-lg font-mono tracking-wider hover:scale-105 transition-transform" title="Clique para copiar"></button>
                     <p class="text-xs text-slate-500 mt-1">Clique para copiar</p>
                 </div>
             </div>
 
-            <!-- Playlist Info Display -->
             <div id="playlist-info-display" class="flex items-center glass-light p-4 rounded-2xl mb-8">
                 <img id="playlist-cover-img" src="" alt="Playlist Cover" class="w-24 h-24 rounded-lg mr-4 shadow-lg">
                 <div>
@@ -404,14 +297,12 @@
                     <i class="fas fa-users text-purple-400 mr-3 text-xl"></i>
                     <h3 class="text-xl font-semibold">Jogadores na sala</h3>
                 </div>
-                <div id="player-list-lobby" class="grid gap-3">
-                    <!-- Players will be inserted here -->
-                </div>
+                <div id="player-list-lobby" class="grid gap-3"></div>
             </div>
 
             <div class="text-center">
-                <button id="start-game-btn" class="hidden gradient-primary hover:shadow-xl p-4 px-8 rounded-2xl font-bold text-xl transition-all btn-hover pulse-glow">
-                    <i class="fas fa-play mr-3"></i>Começar o Jogo!
+                <button id="start-game-btn" class="hidden gradient-primary hover:shadow-xl p-4 px-8 rounded-2xl font-bold text-xl transition-all btn-hover pulse-glow" disabled>
+                    <i class="fas fa-hourglass-start mr-3"></i>Preparando...
                 </button>
                 <div id="waiting-for-host" class="glass-light p-6 rounded-2xl">
                     <i class="fas fa-hourglass-half text-cyan-400 text-2xl mb-3 float"></i>
@@ -420,9 +311,7 @@
             </div>
         </div>
 
-        <!-- Game View -->
         <div id="game-view" class="hidden space-y-4">
-            <!-- Game header -->
             <div class="glass rounded-2xl p-6">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
                     <div>
@@ -444,14 +333,12 @@
                     </div>
                 </div>
                 
-                <!-- Enhanced timer -->
                 <div class="relative w-full bg-slate-800/50 rounded-full h-4 overflow-hidden">
                     <div id="timer-bar" class="absolute top-0 left-0 h-full bg-gradient-to-r from-purple-500 via-pink-500 to-cyan-500 rounded-full transition-all"></div>
                     <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse"></div>
                 </div>
             </div>
 
-            <!-- Game input -->
             <div class="glass rounded-2xl p-6">
                 <div class="mb-4 text-center">
                     <p id="system-message-display" class="font-semibold text-lg h-7"></p>
@@ -461,9 +348,7 @@
                     <div class="flex-1 relative">
                         <div id="autocomplete-results" class="hidden absolute bottom-full left-0 right-0 bg-slate-700 rounded-lg shadow-lg z-10 overflow-hidden mb-1 max-h-48 overflow-y-auto"></div>
                         <i class="fas fa-music absolute left-4 top-1/2 transform -translate-y-1/2 text-purple-400"></i>
-                        <input type="text" id="guess-input" placeholder="Qual o nome da música ou artista?" 
-                               autocomplete="off"
-                               class="w-full bg-slate-800/50 text-white pl-12 pr-4 py-4 rounded-xl border border-slate-700/50 focus:border-purple-500 focus:outline-none input-glow text-lg">
+                        <input type="text" id="guess-input" placeholder="Qual o nome da música ou artista?" autocomplete="off" class="w-full bg-slate-800/50 text-white pl-12 pr-4 py-4 rounded-xl border border-slate-700/50 focus:border-purple-500 focus:outline-none input-glow text-lg">
                     </div>
                     <button id="submit-guess-btn" class="gradient-primary hover:shadow-lg p-4 rounded-xl font-bold transition-all btn-hover">
                         <i class="fa-solid fa-paper-plane text-xl"></i>
@@ -474,19 +359,15 @@
                 </div>
             </div>
 
-            <!-- Scoreboard -->
             <div class="glass rounded-2xl p-6">
                 <div class="flex items-center mb-6">
                     <i class="fas fa-trophy text-amber-400 mr-3 text-xl"></i>
                     <h3 class="text-xl font-semibold">Placar Atual</h3>
                 </div>
-                <div id="scoreboard" class="grid gap-3">
-                    <!-- Scoreboard will be inserted here -->
-                </div>
+                <div id="scoreboard" class="grid gap-3"></div>
             </div>
         </div>
 
-        <!-- Game Over View -->
         <div id="game-over-view" class="hidden glass rounded-3xl p-8 text-center">
             <div class="mb-8">
                 <div class="relative inline-block">
@@ -497,18 +378,14 @@
                 </div>
             </div>
 
-            <div id="winner-announcement" class="mb-8 glass-light p-6 rounded-2xl">
-                <!-- Winner announcement will be inserted here -->
-            </div>
+            <div id="winner-announcement" class="mb-8 glass-light p-6 rounded-2xl"></div>
 
             <div class="mb-8">
                 <div class="flex items-center justify-center mb-6">
                     <i class="fas fa-medal text-amber-400 mr-3 text-2xl"></i>
                     <h3 class="text-2xl font-semibold">Placar Final</h3>
                 </div>
-                <div id="final-scoreboard" class="max-w-lg mx-auto space-y-3">
-                    <!-- Final scoreboard will be inserted here -->
-                </div>
+                <div id="final-scoreboard" class="max-w-lg mx-auto space-y-3"></div>
             </div>
 
             <button id="play-again-btn" class="gradient-success hover:shadow-xl p-4 px-8 rounded-2xl font-bold text-xl transition-all btn-hover">
@@ -521,7 +398,6 @@
         </div>
     </div>
 
-    <!-- Play Again Modal (for host) -->
     <div id="play-again-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
         <div class="glass p-8 rounded-3xl text-center max-w-md mx-4">
             <h3 class="text-2xl font-bold mb-6 text-cyan-300">Jogar Novamente</h3>
@@ -532,8 +408,7 @@
                 <div class="my-4 text-slate-400 font-semibold">OU</div>
                 <div class="relative">
                     <i class="fab fa-spotify absolute left-4 top-1/2 transform -translate-y-1/2 text-green-500"></i>
-                    <input type="text" id="new-playlist-url-input" placeholder="URL da nova playlist" 
-                           class="w-full bg-slate-800/50 text-white pl-12 pr-4 py-3 rounded-xl border border-slate-700/50 focus:border-green-500 focus:outline-none input-glow">
+                    <input type="text" id="new-playlist-url-input" placeholder="URL da nova playlist" class="w-full bg-slate-800/50 text-white pl-12 pr-4 py-3 rounded-xl border border-slate-700/50 focus:border-green-500 focus:outline-none input-glow">
                 </div>
                 <button id="play-again-new-playlist-btn" class="w-full gradient-success hover:shadow-lg p-4 rounded-xl font-bold text-lg transition-all btn-hover">
                     <i class="fas fa-music mr-2"></i>Usar Nova Playlist
@@ -541,6 +416,11 @@
             </div>
             <button id="cancel-play-again-btn" class="mt-6 text-slate-400 hover:text-white transition-colors">Cancelar</button>
         </div>
+    </div>
+
+    <!-- Countdown Overlay -->
+    <div id="countdown-overlay" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+        <div id="countdown-number" class="text-9xl font-black text-white"></div>
     </div>
 
     <script>
@@ -556,10 +436,7 @@
             function resizeLavaBackground() {
                 W = window.innerWidth;
                 H = window.innerHeight;
-                [scene, crisp].forEach(c => {
-                    c.width = W;
-                    c.height = H;
-                });
+                [scene, crisp].forEach(c => { c.width = W; c.height = H; });
             }
             
             window.addEventListener('resize', resizeLavaBackground);
@@ -573,8 +450,8 @@
                     y: Math.random() * H,
                     vx: (Math.random() - 0.5) * 0.8,
                     vy: (Math.random() - 0.5) * 0.8,
-                    baseR: 30 + Math.random() * 60,
-                    r: 30 + Math.random() * 60,
+                    baseR: 45 + Math.random() * 70,
+                    r: 45 + Math.random() * 70,
                     hueShift: Math.random() * 40 - 10
                 });
             }
@@ -587,7 +464,7 @@
                 const dt = Math.min(0.05, (now - last) / 1000);
                 last = now;
 
-                const intensity = getAudioIntensity(); // This will now correctly call the function
+                const intensity = getAudioIntensity();
                 const scaleFactor = 1 + intensity * 1.2;
                 const minScaleFactor = 0.8;
                 const effectiveScaleFactor = Math.max(minScaleFactor, scaleFactor);
@@ -703,6 +580,8 @@
             const lobbyView = document.getElementById('lobby-view');
             const gameView = document.getElementById('game-view');
             const gameOverView = document.getElementById('game-over-view');
+            const countdownOverlay = document.getElementById('countdown-overlay');
+            const countdownNumber = document.getElementById('countdown-number');
 
             const usernameInput = document.getElementById('username-input');
             const playlistUrlInput = document.getElementById('playlist-url-input');
@@ -763,7 +642,7 @@
             let trackTitles = [];
 
             function setupAudioAnalysis() {
-                if (audioContext) return; // Already set up
+                if (audioContext) return;
                 try {
                     audioContext = new (window.AudioContext || window.webkitAudioContext)();
                     const source = audioContext.createMediaElementSource(audio);
@@ -883,16 +762,37 @@
 
                 const interval = setInterval(function() {
                     const timeLeft = animationEnd - Date.now();
-
-                    if (timeLeft <= 0) {
-                        return clearInterval(interval);
-                    }
-
+                    if (timeLeft <= 0) { return clearInterval(interval); }
                     const particleCount = 40 * (timeLeft / duration);
-                    
                     confetti({ ...defaults, particleCount, angle: 80, origin: { x: 0, y: 1 } });
                     confetti({ ...defaults, particleCount, angle: 100, origin: { x: 1, y: 1 } });
                 }, 250);
+            }
+
+            function showCountdown() {
+                const numbers = [
+                    { num: '3', color: '#f59e0b' },
+                    { num: '2', color: '#06b6d4' },
+                    { num: '1', color: '#8b5cf6' },
+                    { num: 'GO!', color: '#10b981' }
+                ];
+                let i = 0;
+                countdownOverlay.classList.remove('hidden');
+                function displayNextNumber() {
+                    if (i < numbers.length) {
+                        const { num, color } = numbers[i];
+                        countdownNumber.textContent = num;
+                        countdownNumber.style.setProperty('--neon-color', color);
+                        countdownNumber.className = 'text-9xl font-black';
+                        void countdownNumber.offsetWidth; 
+                        countdownNumber.classList.add('countdown-animate');
+                        i++;
+                        setTimeout(displayNextNumber, 1000);
+                    } else {
+                        countdownOverlay.classList.add('hidden');
+                    }
+                }
+                displayNextNumber();
             }
 
             // --- Connection Logic ---
@@ -901,7 +801,6 @@
                 localStorage.setItem('username', username);
                 const playlistUrl = playlistUrlInput.value.trim();
                 const roundDuration = parseInt(durationSelect.value, 10);
-
                 let numRounds;
                 const selectedRoundsRadio = document.querySelector('input[name="rounds"]:checked');
                 if (selectedRoundsRadio) {
@@ -918,44 +817,23 @@
                     displayError("Por favor, selecione o número de rodadas.");
                     return;
                 }
-
-                if (!username) {
-                    displayError("Por favor, digite um nome de usuário.");
-                    return;
-                }
-                if (!playlistUrl || !playlistUrl.includes('spotify.com/playlist/')) {
-                    displayError("Por favor, insira uma URL de playlist do Spotify válida.");
-                    return;
-                }
+                if (!username) { displayError("Por favor, digite um nome de usuário."); return; }
+                if (!playlistUrl || !playlistUrl.includes('spotify.com/playlist/')) { displayError("Por favor, insira uma URL de playlist do Spotify válida."); return; }
                 
                 showLoading("Criando sala...");
-
                 try {
                     setupAudioAnalysis();
-                    if (audioContext && audioContext.state === 'suspended') {
-                        await audioContext.resume();
-                    }
-
+                    if (audioContext && audioContext.state === 'suspended') { await audioContext.resume(); }
                     const response = await fetch('/create-room', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            username: username,
-                            playlist_url: playlistUrl,
-                            round_duration: roundDuration,
-                            total_rounds: numRounds
-                        }),
+                        body: JSON.stringify({ username: username, playlist_url: playlistUrl, round_duration: roundDuration, total_rounds: numRounds }),
                     });
-                    
                     const data = await response.json();
-                    if (!response.ok) {
-                        throw new Error(data.detail || 'Falha ao criar a sala.');
-                    }
-                    
+                    if (!response.ok) { throw new Error(data.detail || 'Falha ao criar a sala.'); }
                     roomId = data.room_id;
                     isHost = true;
                     await connectWebSocket(roomId);
-
                 } catch (error) {
                     hideLoading();
                     displayError(error.message);
@@ -966,21 +844,11 @@
                 username = usernameInput.value.trim();
                 localStorage.setItem('username', username);
                 const code = roomCodeInput.value.trim().toUpperCase();
-                if (!username) {
-                    displayError("Por favor, digite um nome de usuário.");
-                    return;
-                }
-                if (!code) {
-                    displayError("Por favor, insira um código de sala.");
-                    return;
-                }
+                if (!username) { displayError("Por favor, digite um nome de usuário."); return; }
+                if (!code) { displayError("Por favor, insira um código de sala."); return; }
                 showLoading("Entrando na sala...");
-
                 setupAudioAnalysis();
-                if (audioContext && audioContext.state === 'suspended') {
-                    await audioContext.resume();
-                }
-
+                if (audioContext && audioContext.state === 'suspended') { await audioContext.resume(); }
                 await connectWebSocket(code);
             }
 
@@ -988,11 +856,8 @@
                 roomId = joinRoomId;
                 const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                 ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws/${roomId}/${encodeURIComponent(username)}`);
-
                 ws.onopen = () => console.log("Conectado ao servidor WebSocket.");
-
                 ws.onmessage = (event) => handleWebSocketMessage(JSON.parse(event.data));
-
                 ws.onclose = () => {
                     console.log("Desconectado do servidor WebSocket.");
                     hideLoading();
@@ -1000,7 +865,6 @@
                     displayError("Conexão perdida. Tente novamente.");
                     ws = null;
                 };
-
                 ws.onerror = (error) => {
                     console.error("Erro no WebSocket:", error);
                     hideLoading();
@@ -1023,8 +887,9 @@
                         roomCodeDisplay.textContent = data.room_id;
                         if (isHost) {
                             startGameBtn.classList.remove('hidden');
+                            startGameBtn.disabled = true;
+                            startGameBtn.innerHTML = '<i class="fas fa-hourglass-start mr-3"></i>Preparando...';
                             waitingForHost.classList.add('hidden');
-                            // O botão começa desabilitado até que o server confirme a prontidão
                         } else {
                             startGameBtn.classList.add('hidden');
                             waitingForHost.classList.remove('hidden');
@@ -1045,12 +910,7 @@
                         startGameBtn.innerHTML = '<i class="fas fa-play mr-3"></i>Começar o Jogo!';
                         break;
                     case 'rematch_initiated':
-                        showView('lobby-view');
-                        if (isHost) {
-                            startGameBtn.disabled = true;
-                            startGameBtn.innerHTML = '<i class="fas fa-hourglass-start mr-3"></i>Preparando...';
-                        }
-                        showSystemMessage(data.message, 'info', 5000);
+                        showLoading(data.message);
                         break;
                     case 'game_prepared':
                         trackTitles = data.titles;
@@ -1058,7 +918,6 @@
                     case 'update_players':
                         const isLobby = lobbyView.offsetParent !== null;
                         const isGame = gameView.offsetParent !== null;
-                        
                         if (isLobby) {
                             updatePlayerList(data.players, playerListLobby, data.host_username);
                         } else if (isGame) {
@@ -1087,8 +946,7 @@
                     case 'system_message':
                         if (data.message.toLowerCase().includes('baixando') || data.message.toLowerCase().includes('downloading')) {
                             showLoading(data.message);
-                        }
-                        else {
+                        } else {
                             hideLoading();
                             showSystemMessage(data.message, data.level || 'info');
                             if (data.message.includes('✅') && data.message.includes(username)) {
@@ -1101,9 +959,12 @@
                             showSystemMessage(data.message, 'error', 2000);
                         }
                         break;
-                    case 'start_round':
-                        hideLoading();
+                    case 'round_countdown':
                         showView('game-view');
+                        systemMessageDisplay.textContent = 'Prepare-se!';
+                        showCountdown();
+                        break;
+                    case 'start_round':
                         systemMessageDisplay.textContent = '';
                         guessInput.value = '';
                         guessInput.disabled = false;
@@ -1112,11 +973,9 @@
                         guessInput.focus();
                         currentRoundEl.textContent = data.round;
                         totalRoundsEl.textContent = data.total_rounds;
-                        
                         timerBar.style.animation = 'none';
                         void timerBar.offsetWidth;
                         timerBar.style.animation = `progress ${data.duration}s linear forwards`;
-                        
                         audio.src = data.song_url;
                         audio.play().catch(e => console.error("Erro ao tocar áudio:", e));
                         break;
@@ -1133,7 +992,6 @@
                         showView('game-over-view');
                         playAgainBtn.classList.remove('hidden');
                         waitingForHostRematch.classList.add('hidden');
-
                         const winner = data.winner;
                         if (winner) {
                             winnerAnnouncement.innerHTML = `
@@ -1208,9 +1066,7 @@
                     autocompleteResults.classList.add('hidden');
                     return;
                 }
-
                 const filteredTitles = trackTitles.filter(title => title.toLowerCase().startsWith(value)).slice(0, 5);
-                
                 if (filteredTitles.length > 0) {
                     filteredTitles.forEach(title => {
                         const item = document.createElement('div');
@@ -1269,9 +1125,6 @@
             playAgainNewPlaylistBtn.addEventListener('click', () => {
                 const newUrl = newPlaylistUrlInput.value.trim();
                 if (!newUrl || !newUrl.includes('spotify.com/playlist/')) {
-                    // Re-enable button if URL is invalid
-                    playAgainNewPlaylistBtn.disabled = false;
-                    playAgainNewPlaylistBtn.innerHTML = '<i class="fas fa-music mr-2"></i>Usar Nova Playlist';
                     displayError("Por favor, insira uma URL de playlist do Spotify válida.");
                     return;
                 }
