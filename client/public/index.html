@@ -6,6 +6,7 @@
     <title>Guess the Song - Multiplayer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
         
@@ -434,6 +435,32 @@
             <button id="play-again-btn" class="gradient-success hover:shadow-xl p-4 px-8 rounded-2xl font-bold text-xl transition-all btn-hover">
                 <i class="fas fa-redo mr-3"></i>Jogar Novamente
             </button>
+            <div id="waiting-for-host-rematch" class="hidden glass-light p-6 rounded-2xl mt-6">
+                <i class="fas fa-hourglass-half text-cyan-400 text-2xl mb-3 float"></i>
+                <p class="text-slate-300 text-lg font-medium">Aguardando o host iniciar um novo jogo...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Play Again Modal (for host) -->
+    <div id="play-again-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+        <div class="glass p-8 rounded-3xl text-center max-w-md mx-4">
+            <h3 class="text-2xl font-bold mb-6 text-cyan-300">Jogar Novamente</h3>
+            <div class="space-y-4">
+                <button id="play-again-same-playlist-btn" class="w-full gradient-primary hover:shadow-lg p-4 rounded-xl font-bold text-lg transition-all btn-hover">
+                    <i class="fas fa-redo mr-2"></i>Usar a Mesma Playlist
+                </button>
+                <div class="my-4 text-slate-400 font-semibold">OU</div>
+                <div class="relative">
+                    <i class="fab fa-spotify absolute left-4 top-1/2 transform -translate-y-1/2 text-green-500"></i>
+                    <input type="text" id="new-playlist-url-input" placeholder="URL da nova playlist" 
+                           class="w-full bg-slate-800/50 text-white pl-12 pr-4 py-3 rounded-xl border border-slate-700/50 focus:border-green-500 focus:outline-none input-glow">
+                </div>
+                <button id="play-again-new-playlist-btn" class="w-full gradient-success hover:shadow-lg p-4 rounded-xl font-bold text-lg transition-all btn-hover">
+                    <i class="fas fa-music mr-2"></i>Usar Nova Playlist
+                </button>
+            </div>
+            <button id="cancel-play-again-btn" class="mt-6 text-slate-400 hover:text-white transition-colors">Cancelar</button>
         </div>
     </div>
 
@@ -494,6 +521,13 @@
             const winnerAnnouncement = document.getElementById('winner-announcement');
             const finalScoreboard = document.getElementById('final-scoreboard');
             const playAgainBtn = document.getElementById('play-again-btn');
+            const waitingForHostRematch = document.getElementById('waiting-for-host-rematch');
+
+            const playAgainModal = document.getElementById('play-again-modal');
+            const playAgainSamePlaylistBtn = document.getElementById('play-again-same-playlist-btn');
+            const newPlaylistUrlInput = document.getElementById('new-playlist-url-input');
+            const playAgainNewPlaylistBtn = document.getElementById('play-again-new-playlist-btn');
+            const cancelPlayAgainBtn = document.getElementById('cancel-play-again-btn');
 
             // --- Game State ---
             let ws = null;
@@ -515,7 +549,7 @@
             }
 
             function showView(viewId) {
-                [entryView, lobbyView, gameView, gameOverView].forEach(v => v.classList.add('hidden'));
+                [entryView, lobbyView, gameView, gameOverView, playAgainModal].forEach(v => v.classList.add('hidden'));
                 document.getElementById(viewId).classList.remove('hidden');
             }
 
@@ -531,7 +565,13 @@
                     playerEl.className = 'glass-light p-4 rounded-xl transition-all duration-300 hover:scale-105';
                     
                     const hostIcon = player.username === hostUsername ? `<i class="fas fa-crown text-amber-400 ml-2" title="Host"></i>` : '';
-                    const answeredIcon = player.has_answered ? `<i class="fas fa-check-circle text-green-400 ml-2" title="Acertou!"></i>` : '';
+                    
+                    let answeredContent = '';
+                    if (player.has_answered) {
+                        const timeString = player.guess_time ? ` <span class="text-xs text-slate-400">(${player.guess_time.toFixed(1)}s)</span>` : '';
+                        answeredContent = `<i class="fas fa-check-circle text-green-400 ml-2" title="Acertou!"></i>${timeString}`;
+                    }
+
                     const gaveUpIcon = player.gave_up ? `<i class="fas fa-flag text-slate-400 ml-2" title="Desistiu"></i>` : '';
                     const isCurrentUser = player.username === username;
                     
@@ -546,7 +586,7 @@
                                         <span class="font-semibold ${isCurrentUser ? 'text-purple-400' : 'text-white'}">${player.username}</span>
                                         ${isCurrentUser ? '<span class="text-purple-300 text-sm ml-2">(Você)</span>' : ''}
                                         ${hostIcon}
-                                        ${answeredIcon}
+                                        ${answeredContent}
                                         ${gaveUpIcon}
                                     </div>
                                 </div>
@@ -583,9 +623,29 @@
                 }
             }
 
+            function launchConfetti() {
+                const duration = 2 * 1000;
+                const animationEnd = Date.now() + duration;
+                const defaults = { startVelocity: 25, spread: 100, ticks: 50, zIndex: 100, colors: ['#8b5cf6', '#06b6d4', '#f59e0b', '#10b981', '#ef4444', '#ffffff'] };
+
+                const interval = setInterval(function() {
+                    const timeLeft = animationEnd - Date.now();
+
+                    if (timeLeft <= 0) {
+                        return clearInterval(interval);
+                    }
+
+                    const particleCount = 40 * (timeLeft / duration);
+                    
+                    confetti({ ...defaults, particleCount, angle: 80, origin: { x: 0, y: 1 } });
+                    confetti({ ...defaults, particleCount, angle: 100, origin: { x: 1, y: 1 } });
+                }, 250);
+            }
+
             // --- Connection Logic ---
             async function createAndConnect() {
                 username = usernameInput.value.trim();
+                localStorage.setItem('username', username);
                 const playlistUrl = playlistUrlInput.value.trim();
                 const roundDuration = parseInt(durationSelect.value, 10);
 
@@ -628,6 +688,7 @@
 
             async function joinAndConnect() {
                 username = usernameInput.value.trim();
+                localStorage.setItem('username', username);
                 const code = roomCodeInput.value.trim().toUpperCase();
                 if (!username) {
                     displayError("Por favor, digite um nome de usuário.");
@@ -708,10 +769,14 @@
                         }
                         break;
                     case 'system_message':
-                        if (data.message.toLowerCase().includes('baixando')) {
+                        if (data.message.toLowerCase().includes('baixando') || data.message.toLowerCase().includes('downloading')) {
                             showLoading(data.message);
                         } else {
+                            hideLoading();
                             showSystemMessage(data.message, data.level || 'info');
+                            if (data.message.includes('✅') && data.message.includes(username)) {
+                                launchConfetti();
+                            }
                         }
                         break;
                     case 'guess_result':
@@ -720,6 +785,7 @@
                         }
                         break;
                     case 'start_round':
+                        hideLoading();
                         showView('game-view');
                         systemMessageDisplay.textContent = '';
                         guessInput.value = '';
@@ -748,6 +814,9 @@
                     case 'game_over':
                         audio.pause();
                         showView('game-over-view');
+                        playAgainBtn.classList.remove('hidden');
+                        waitingForHostRematch.classList.add('hidden');
+
                         const winner = data.winner;
                         if (winner) {
                             winnerAnnouncement.innerHTML = `
@@ -813,7 +882,31 @@
             });
             
             playAgainBtn.addEventListener('click', () => {
-               window.location.reload();
+                if (isHost) {
+                    playAgainModal.classList.remove('hidden');
+                } else {
+                    playAgainBtn.classList.add('hidden');
+                    waitingForHostRematch.classList.remove('hidden');
+                }
+            });
+
+            cancelPlayAgainBtn.addEventListener('click', () => {
+                playAgainModal.classList.add('hidden');
+            });
+
+            playAgainSamePlaylistBtn.addEventListener('click', () => {
+                sendMessage({ type: 'play_again', playlist_url: null });
+                playAgainModal.classList.add('hidden');
+            });
+
+            playAgainNewPlaylistBtn.addEventListener('click', () => {
+                const newUrl = newPlaylistUrlInput.value.trim();
+                if (!newUrl || !newUrl.includes('spotify.com/playlist/')) {
+                    displayError("Por favor, insira uma URL de playlist do Spotify válida.");
+                    return;
+                }
+                sendMessage({ type: 'play_again', playlist_url: newUrl });
+                playAgainModal.classList.add('hidden');
             });
 
             roomCodeDisplay.addEventListener('click', () => {
@@ -827,6 +920,11 @@
                     }, 1500);
                 });
             });
+
+            const savedUsername = localStorage.getItem('username');
+            if (savedUsername) {
+                usernameInput.value = savedUsername;
+            }
 
             // Auto-focus username input
             usernameInput.focus();

@@ -3,7 +3,7 @@ import os
 import random
 import time
 import logging
-import re  # Módulo de expressões regulares
+import re
 from pathlib import Path
 import spotipy
 import yt_dlp
@@ -30,25 +30,23 @@ Path("static/audio").mkdir(parents=True, exist_ok=True)
 
 # --- FUNÇÃO DE NORMALIZAÇÃO ATUALIZADA ---
 def normalize_string(text: str) -> str:
-    """
-    Prepara uma string para uma comparação justa:
-    1. Remove conteúdo entre parênteses e colchetes (ex: feat, remix, live).
-    2. Converte para minúsculas.
-    3. Remove caracteres especiais (mantém apenas letras, números e espaços).
-    4. Normaliza múltiplos espaços para um único espaço.
-    5. Remove espaços nas pontas.
-    """
-    # Passo 1: Remove conteúdo entre parênteses () e colchetes []
-    text = re.sub(r'\s*[\(\[].*?[\)\]]', '', text).strip()
-    
-    # Passo 2: Converte para minúsculas
     text = text.lower()
     
-    # Passo 3: Remove qualquer coisa que não seja letra, número ou espaço
-    text = re.sub(r'[^a-z0-9\s]', '', text)
+    # Remove common metadata tags found in parentheses or brackets
+    text = re.sub(r'\s*[\(\[].*(feat|ft|with|remix|remaster|live|edit|version|deluxe)[\)\]].*', '', text, flags=re.IGNORECASE).strip()
     
-    # Passo 4 e 5: Normaliza espaços
+    # Take the part before a main separator like ' - '
+    text = text.split(' - ')[0]
+    
+    # Remove any remaining parentheses or brackets
+    text = re.sub(r'[\(\)\[\]]', '', text).strip()
+
+    # Remove special characters
+    text = re.sub(r"[^a-z0-9\\s']", '', text) # Keep apostrophes for now
+    
+    # Normalize spaces
     text = ' '.join(text.split())
+    
     return text.strip()
 
 
@@ -59,11 +57,26 @@ class Player:
         self.websocket = websocket
         self.score = 0
         self.has_answered = False
-        self.gave_up = False # Novo atributo
+        self.gave_up = False
+        self.guess_time: Optional[float] = None
 
     def to_dict(self):
-        # Inclui o novo atributo no dicionário
-        return {"username": self.username, "score": self.score, "has_answered": self.has_answered, "gave_up": self.gave_up}
+        return {
+            "username": self.username, 
+            "score": self.score, 
+            "has_answered": self.has_answered, 
+            "gave_up": self.gave_up,
+            "guess_time": self.guess_time
+        }
+
+    def reset_for_new_round(self):
+        self.has_answered = False
+        self.gave_up = False
+        self.guess_time = None
+
+    def reset_for_new_game(self):
+        self.reset_for_new_round()
+        self.score = 0
 
 class GameRoom:
     def __init__(self, host: Player, playlist_url: str, round_duration: int):
@@ -74,19 +87,21 @@ class GameRoom:
         self.game_settings = {"round_duration": round_duration, "total_rounds": 10}
         self.game_state = "LOBBY"
         self.current_round = 0
-        self.current_song = None
+        self.current_song: Optional[Dict] = None
         self.round_start_time = 0
         self.game_tracks: List[Dict] = []
+        self.played_track_ids: Set[str] = set()
         self._round_end_event = asyncio.Event()
         self._round_task: Optional[asyncio.Task] = None
-    
+        self._download_tasks: List[asyncio.Task] = []
+
     async def broadcast(self, message: dict):
         websockets = [p.websocket for p in self.players.values() if p.websocket]
         for ws in websockets:
             try:
                 await ws.send_json(message)
             except Exception as e:
-                logger.warning(f"Não foi possível enviar mensagem para um websocket: {e}")
+                logger.warning(f"Could not send message to a websocket: {e}")
 
     async def broadcast_player_update(self):
         player_list = [p.to_dict() for p in self.players.values()]
@@ -110,10 +125,12 @@ class GameRoom:
                 self.game_state = "GAME_OVER"
                 if self._round_task:
                     self._round_task.cancel()
+                for task in self._download_tasks:
+                    task.cancel()
             else:
                 await self.broadcast_player_update()
-    
-    def download_song_segment(self, search_query: str, output_path: str, duration: int):
+
+    def _download_song_segment(self, search_query: str, output_path: str, duration: int):
         start_time = random.randint(20, 70)
         ydl_opts = {
             'format': 'bestaudio/best',
@@ -122,81 +139,133 @@ class GameRoom:
             'outtmpl': output_path.replace('.mp3', ''),
             'quiet': True,
             'default_search': 'ytsearch1',
+            'external_downloader': '/snap/bin/aria2c',
+            'external_downloader_args': ['-x', '10'],
         }
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([search_query])
-            logger.info(f"Segmento baixado: {output_path}")
+            logger.info(f"Segment downloaded: {output_path}")
+            return True
         except Exception as e:
-            logger.error(f"Falha no download para '{search_query}': {e}")
+            logger.error(f"Download failed for '{search_query}': {e}")
+            return False
+
+    async def _download_wrapper(self, track: Dict):
+        track['download_status'] = 'downloading'
+        filepath = Path("static/audio") / track['file']
+        
+        success = await asyncio.to_thread(
+            self._download_song_segment,
+            f"{track['artist']} - {track['title']} audio",
+            str(filepath),
+            self.game_settings["round_duration"]
+        )
+        
+        track['download_status'] = 'downloaded' if success else 'failed'
+        logger.info(f"Track {track['title']} status: {track['download_status']}")
 
     async def prepare_game_tracks(self):
         self.game_state = "PREPARING"
-        await self.broadcast({"type": "system_message", "message": "Buscando todas as músicas da playlist...", "level": "info"})
+        await self.broadcast({"type": "system_message", "message": "Fetching playlist...", "level": "info"})
         
         try:
             results = sp.playlist_tracks(self.playlist_url)
             spotify_tracks = []
             while results:
-                spotify_tracks.extend([item['track'] for item in results['items'] if item and item.get('track')])
+                spotify_tracks.extend([item['track'] for item in results['items'] if item and item.get('track') and item['track'].get('id')])
                 if results['next']:
                     results = sp.next(results)
                 else:
                     results = None
             
-            logger.info(f"Encontradas {len(spotify_tracks)} músicas na playlist.")
+            logger.info(f"Found {len(spotify_tracks)} tracks in playlist.")
+            
+            # Filter out already played tracks
+            unplayed_tracks = [t for t in spotify_tracks if t['id'] not in self.played_track_ids]
+            logger.info(f"Found {len(unplayed_tracks)} unplayed tracks.")
 
-            if not spotify_tracks:
-                await self.broadcast({"type": "system_message", "message": "Playlist não encontrada ou vazia.", "level": "error"})
+            if not unplayed_tracks:
+                await self.broadcast({"type": "system_message", "message": "No unplayed tracks found in this playlist.", "level": "error"})
                 return False
 
-            await self.broadcast({"type": "system_message", "message": f"{len(spotify_tracks)} músicas encontradas. Preparando o jogo...", "level": "info"})
-
-            random.shuffle(spotify_tracks)
-            # Garante que não selecionamos mais rodadas do que músicas disponíveis
-            num_rounds = min(self.game_settings["total_rounds"], len(spotify_tracks))
-            self.game_settings["total_rounds"] = num_rounds # Atualiza o número total de rodadas
-            selected_tracks = spotify_tracks[:num_rounds]
+            random.shuffle(unplayed_tracks)
+            num_rounds = min(self.game_settings["total_rounds"], len(unplayed_tracks))
+            self.game_settings["total_rounds"] = num_rounds
+            selected_tracks = unplayed_tracks[:num_rounds]
             
             self.game_tracks = []
-            download_tasks = []
-            for track in selected_tracks:
-                if not track or not track.get('name') or not track.get('artists'):
-                    continue # Pula faixas inválidas
+            for track_data in selected_tracks:
+                if not track_data.get('name') or not track_data.get('artists'):
+                    continue
                 
-                title, artist = track['name'], track['artists'][0]['name']
-                filename = f"{track['id']}.mp3"
-                filepath = Path("static/audio") / filename
-                self.game_tracks.append({"title": title, "artist": artist, "file": filename})
-                
-                if not filepath.exists():
-                    task = asyncio.to_thread(self.download_song_segment, f"{artist} - {title} audio", str(filepath), self.game_settings["round_duration"])
-                    download_tasks.append(task)
-            
-            if download_tasks:
-                await self.broadcast({"type": "system_message", "message": f"Baixando {len(download_tasks)} músicas. Isso pode levar um momento...", "level": "info"})
-                await asyncio.gather(*download_tasks)
-            
+                filepath = Path("static/audio") / f"{track_data['id']}.mp3"
+                track_info = {
+                    "id": track_data['id'],
+                    "title": track_data['name'],
+                    "artist": track_data['artists'][0]['name'],
+                    "file": f"{track_data['id']}.mp3",
+                    "download_status": 'downloaded' if filepath.exists() else 'pending',
+                    "download_task": None
+                }
+                self.game_tracks.append(track_info)
+
+            # Start downloads in the background
+            self._download_tasks = []
+            for track in self.game_tracks:
+                if track['download_status'] == 'pending':
+                    task = asyncio.create_task(self._download_wrapper(track))
+                    track['download_task'] = task
+                    self._download_tasks.append(task)
+
             return True
         except Exception as e:
-            logger.error(f"Erro ao preparar as músicas: {e}")
-            await self.broadcast({"type": "system_message", "message": "Erro ao processar a playlist do Spotify.", "level": "error"})
+            logger.error(f"Error preparing tracks: {e}")
+            await self.broadcast({"type": "system_message", "message": "Error processing Spotify playlist.", "level": "error"})
             return False
 
     async def start_game(self, starter_username: str):
-        if starter_username != self.host.username or self.game_state != "LOBBY": return
+        if starter_username != self.host.username or self.game_state not in ["LOBBY", "GAME_OVER"]:
+            return
         
+        for player in self.players.values():
+            player.reset_for_new_game()
+        self.current_round = 0
+        
+        if self.game_tracks:
+            self.played_track_ids.update(t['id'] for t in self.game_tracks)
+
         success = await self.prepare_game_tracks()
-        if not success:
-            self.game_state = "LOBBY"; return
+        if not success or not self.game_tracks:
+            self.game_state = "LOBBY"
+            await self.broadcast({"type": "system_message", "message": "Could not prepare any tracks for the game.", "level": "error"})
+            return
+
+        # --- NEW LOGIC ---
+        # Wait for the first track to be ready
+        first_track = self.game_tracks[0]
+        if first_track['download_status'] != 'downloaded':
+            await self.broadcast({"type": "system_message", "message": "Downloading the first song to begin...", "level": "info"})
+            
+            # Wait for the download task of the first track to complete
+            if first_track['download_task']:
+                try:
+                    await asyncio.wait_for(first_track['download_task'], timeout=120) # 2-minute timeout for download
+                except asyncio.TimeoutError:
+                    logger.error(f"Timeout downloading first track: {first_track['title']}")
+                    first_track['download_status'] = 'failed'
+
+        # Check if the first track is ready after waiting
+        if first_track['download_status'] != 'downloaded':
+            self.game_state = "LOBBY"
+            await self.broadcast({"type": "system_message", "message": "Failed to download the first song. Please try again.", "level": "error"})
+            return
+        # --- END NEW LOGIC ---
 
         self.game_state = "PLAYING"
-        self.current_round = 0
-        for player in self.players.values(): player.score = 0
-        
         await self.broadcast_player_update()
-        await self.broadcast({"type": "system_message", "message": "O jogo vai começar!", "level": "info"})
-        await asyncio.sleep(3)
+        await self.broadcast({"type": "system_message", "message": "Game is about to start!", "level": "info"})
+        
         self._round_task = asyncio.create_task(self.game_loop())
 
     async def game_loop(self):
@@ -207,10 +276,19 @@ class GameRoom:
     async def run_next_round(self):
         self.current_round += 1
         self.current_song = self.game_tracks[self.current_round - 1]
-        # Reseta o status de 'desistiu' e 'respondeu' para todos os jogadores
-        for p in self.players.values(): 
-            p.has_answered = False
-            p.gave_up = False
+
+        # Wait for the song to be downloaded
+        while self.current_song['download_status'] != 'downloaded':
+            if self.current_song['download_status'] == 'failed':
+                await self.broadcast({"type": "system_message", "message": f"Could not download song for this round, skipping...", "level": "error"})
+                await asyncio.sleep(3)
+                return # Skip to the next iteration of game_loop
+
+            await self.broadcast({"type": "system_message", "message": f"Downloading song for round {self.current_round}... please wait.", "level": "info"})
+            await asyncio.sleep(1)
+
+        for p in self.players.values():
+            p.reset_for_new_round()
         self._round_end_event.clear()
         
         await self.broadcast_player_update()
@@ -223,39 +301,33 @@ class GameRoom:
         self.round_start_time = time.time()
         
         try:
-            # Espera o evento de fim de rodada ou o timeout
             await asyncio.wait_for(self._round_end_event.wait(), timeout=self.game_settings["round_duration"] + 2)
         except asyncio.TimeoutError:
-            pass # O timeout é o fluxo normal se ninguém acertar
+            pass
         finally:
-            # Garante que o fim da rodada seja processado
             await self.end_round()
 
     async def handle_guess(self, username: str, guess_text: str):
         player = self.players.get(username)
-        # Impede o palpite se o jogo não estiver rodando, ou se o jogador já respondeu ou desistiu
-        if self.game_state != "PLAYING" or not player or player.has_answered or player.gave_up: 
+        if self.game_state != "PLAYING" or not player or player.has_answered or player.gave_up:
             return
 
         normalized_title = normalize_string(self.current_song['title'])
         normalized_guess = normalize_string(guess_text)
 
-        is_correct = normalized_guess == normalized_title
-        
-        if is_correct:
+        if normalized_guess == normalized_title:
             time_taken = time.time() - self.round_start_time
             points = max(10, 100 - int(time_taken * 5))
             player.score += points
             player.has_answered = True
+            player.guess_time = time_taken
             
-            await self.broadcast({"type": "system_message", "message": f"✅ {username} acertou!", "level": "info"})
+            await self.broadcast({"type": "system_message", "message": f"✅ {username} acertou em {time_taken:.1f}s!", "level": "info"})
             await self.broadcast_player_update()
 
-            # Se todos os jogadores ativos (que não desistiram) responderam, termina a rodada
             if all(p.has_answered or p.gave_up for p in self.players.values()):
                 self._round_end_event.set()
         else:
-            # Envia feedback de erro apenas para o jogador que errou
             if player.websocket:
                 try:
                     await player.websocket.send_json({
@@ -275,20 +347,16 @@ class GameRoom:
         player.gave_up = True
         logger.info(f"Jogador {username} desistiu da rodada.")
         
-        # Notifica a todos sobre a atualização do status do jogador
         await self.broadcast_player_update()
         
-        # Envia uma mensagem de sistema informando que o jogador desistiu
         await self.broadcast({"type": "system_message", "message": f"⚠️ {username} desistiu da rodada!", "level": "info"})
 
-        # Se todos os jogadores desistiram ou responderam, termina a rodada
         if all(p.has_answered or p.gave_up for p in self.players.values()):
             logger.info("Todos os jogadores desistiram ou responderam. Encerrando a rodada.")
             self._round_end_event.set()
 
 
     async def end_round(self):
-        # Previne chamadas múltiplas
         if self.game_state == "ROUND_OVER":
             return
         self.game_state = "ROUND_OVER"
@@ -299,17 +367,30 @@ class GameRoom:
             "correct_artist": self.current_song['artist']
         })
         await asyncio.sleep(5)
-        self.game_state = "PLAYING" # Prepara para a próxima rodada no loop
+        self.game_state = "PLAYING"
 
     async def end_game(self):
         self.game_state = "GAME_OVER"
         player_list = [p.to_dict() for p in self.players.values()]
         winner = max(player_list, key=lambda p: p['score'], default=None)
+        
+        self.played_track_ids.update(t['id'] for t in self.game_tracks)
+
         await self.broadcast({
             "type": "game_over",
             "scoreboard": sorted(player_list, key=lambda p: p['score'], reverse=True),
             "winner": winner
         })
+
+    async def reset_for_new_game(self, new_playlist_url: Optional[str], starter_username: str):
+        if starter_username != self.host.username:
+            return
+
+        if new_playlist_url:
+            self.playlist_url = new_playlist_url
+        
+        await self.start_game(starter_username)
+
 
 class GameManager:
     def __init__(self):
@@ -325,6 +406,11 @@ class GameManager:
         
     def remove_room(self, room_id: str):
         if room_id in self.rooms:
+            room = self.rooms[room_id]
+            if room._round_task:
+                room._round_task.cancel()
+            for task in room._download_tasks:
+                task.cancel()
             del self.rooms[room_id]
             logger.info(f"Sala {room_id} removida.")
 
