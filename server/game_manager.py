@@ -44,7 +44,7 @@ def normalize_string(text: str) -> str:
     text = text.lower()
     text = re.sub(r'\s*[\(\[].*(feat|ft|with|remix|remaster|live|edit|version|deluxe)[\)\]].*', '', text, flags=re.IGNORECASE).strip()
     text = text.split(' - ')[0]
-    text = re.sub(r'[\(\)\[\]]', '', text).strip()
+    text = re.sub(r'[\(\)[\]]', '', text).strip()
     text = re.sub(r"[^a-z0-9\\s']", '', text)
     text = ' '.join(text.split())
     return text.strip()
@@ -175,28 +175,38 @@ class GameRoom:
         track['download_status'] = 'downloaded' if success else 'failed'
         logger.info(f"Track {track['title']} status: {track['download_status']}")
 
-    async def prepare_game_in_background(self):
-        logger.info(f"Room {self.room_id}: Starting background preparation.")
+    async def prepare_game_in_background(self, is_rematch=False, starter_username=None):
+        logger.info(f"Room {self.room_id}: Starting background preparation (is_rematch={is_rematch}).")
+        
+        if is_rematch:
+            await self.broadcast({"type": "rematch_initiated", "message": "O anfitrião iniciou um novo jogo! Preparando novas músicas..."})
+
         await self.fetch_playlist_details()
         await self.broadcast({"type": "playlist_details_updated", "playlist_name": self.playlist_name, "playlist_cover_image_url": self.playlist_cover_image_url, "playlist_owner_name": self.playlist_owner_name})
 
         success = await self.prepare_game_tracks()
-        if success:
-            await self.broadcast({"type": "game_prepared", "titles": self.all_playlist_titles})
-            
-            # Wait for the first track and then notify the host
+        if not success:
+            await self.broadcast({"type": "system_message", "message": "Failed to prepare new tracks.", "level": "error"})
+            self.game_state = "LOBBY"
+            return
+
+        await self.broadcast({"type": "game_prepared", "titles": self.all_playlist_titles})
+        
+        self._preparation_complete_event.set()
+        logger.info(f"Room {self.room_id}: Track preparation is complete.")
+
+        if is_rematch:
+            logger.info(f"Room {self.room_id}: Rematch preparation complete, starting game automatically.")
+            await self.start_game(starter_username)
+        else:
             if self.game_tracks and self.game_tracks[0]['download_task']:
                 await self.game_tracks[0]['download_task']
                 if self.game_tracks[0]['download_status'] == 'downloaded':
                     logger.info(f"Room {self.room_id}: First track downloaded. Notifying host.")
                     await self.broadcast({"type": "host_ready_to_start"}, to_host_only=True)
 
-        self._preparation_complete_event.set()
-        logger.info(f"Room {self.room_id}: Background preparation finished.")
-
     async def prepare_game_tracks(self):
         try:
-            # Use cache if available and not expired
             if self.playlist_url in playlist_cache and (time.time() - playlist_cache[self.playlist_url][0]) < CACHE_TTL:
                 logger.info("Fetching playlist from cache.")
                 spotify_tracks = playlist_cache[self.playlist_url][1]
@@ -215,7 +225,7 @@ class GameRoom:
             self.all_playlist_titles = [track['name'] for track in spotify_tracks if track and track.get('name')]
             unplayed_tracks = [t for t in spotify_tracks if t['id'] not in self.played_track_ids]
             if not unplayed_tracks:
-                await self.broadcast({"type": "system_message", "message": "No unplayed tracks found.", "level": "error"})
+                await self.broadcast({"type": "system_message", "message": "All tracks from this playlist have been played!", "level": "error"})
                 return False
 
             random.shuffle(unplayed_tracks)
@@ -228,7 +238,7 @@ class GameRoom:
                 if not track_data.get('name') or not track_data.get('artists'): continue
                 filepath = Path("static/audio") / f"{track_data['id']}.mp3"
                 self.game_tracks.append({"id": track_data['id'], "title": track_data['name'], "artist": track_data['artists'][0]['name'], "file": f"{track_data['id']}.mp3", "download_status": 'downloaded' if filepath.exists() else 'pending', "download_task": None})
-
+            
             self._download_tasks = [asyncio.create_task(self._download_wrapper(track)) for track in self.game_tracks if track['download_status'] == 'pending']
             for i, track in enumerate(t for t in self.game_tracks if t['download_status'] == 'pending'):
                 track['download_task'] = self._download_tasks[i]
@@ -240,22 +250,29 @@ class GameRoom:
             return False
 
     async def start_game(self, starter_username: str):
-        if starter_username != self.host.username or self.game_state not in ["LOBBY", "GAME_OVER"]: return
-        
+        if starter_username != self.host.username: return
+        if self.game_state == "PLAYING": return
+
         await self._preparation_complete_event.wait()
+
         if not self.game_tracks:
             self.game_state = "LOBBY"
             await self.broadcast({"type": "system_message", "message": "Could not prepare any tracks.", "level": "error"})
             return
 
-        for player in self.players.values(): player.reset_for_new_game()
-        self.current_round = 0
-        self.played_track_ids.update(t['id'] for t in self.game_tracks)
-
-        if self.game_tracks[0]['download_status'] != 'downloaded':
+        first_track = self.game_tracks[0]
+        if first_track['download_status'] != 'downloaded':
+            logger.info(f"Room {self.room_id}: Waiting for first track download to complete before starting.")
+            if first_track['download_task']:
+                await first_track['download_task']
+    
+        if first_track['download_status'] != 'downloaded':
             await self.broadcast({"type": "system_message", "message": "Failed to download the first song.", "level": "error"})
             return
 
+        for player in self.players.values(): player.reset_for_new_game()
+        self.current_round = 0
+        
         self.game_state = "PLAYING"
         await self.broadcast_player_update()
         await self.broadcast({"type": "system_message", "message": "Game is about to start!", "level": "info"})
@@ -327,37 +344,30 @@ class GameRoom:
 
     async def end_game(self):
         self.game_state = "GAME_OVER"
+        self.played_track_ids.update(t['id'] for t in self.game_tracks)
         player_list = [p.to_dict() for p in self.players.values()]
         winner = max(player_list, key=lambda p: p['score'], default=None)
-        self.played_track_ids.update(t['id'] for t in self.game_tracks)
         await self.broadcast({"type": "game_over", "scoreboard": sorted(player_list, key=lambda p: p['score'], reverse=True), "winner": winner})
 
     async def reset_for_new_game(self, new_playlist_url: Optional[str], starter_username: str):
-        if starter_username != self.host.username:
-            return
+        if starter_username != self.host.username: return
 
-        logger.info(f"Room {self.room_id}: Host started a new game.")
-
+        logger.info(f"Room {self.room_id}: Host initiated a new game.")
+        
         if new_playlist_url:
             logger.info(f"Room {self.room_id}: Using new playlist: {new_playlist_url}")
             self.playlist_url = new_playlist_url
             playlist_cache.pop(self.playlist_url, None)
+            self.played_track_ids.clear()
 
         self.game_state = "LOBBY"
         self.game_tracks = []
         self.all_playlist_titles = []
         self._preparation_complete_event.clear()
-        
-        for task in self._download_tasks:
-            task.cancel()
+        for task in self._download_tasks: task.cancel()
         self._download_tasks = []
 
-        await self.broadcast({
-            "type": "rematch_initiated",
-            "message": "O anfitrião iniciou um novo jogo! Preparando novas músicas..."
-        })
-
-        asyncio.create_task(self.prepare_game_in_background())
+        asyncio.create_task(self.prepare_game_in_background(is_rematch=True, starter_username=starter_username))
 
 class GameManager:
     def __init__(self):

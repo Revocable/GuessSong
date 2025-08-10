@@ -1269,6 +1269,9 @@
             playAgainNewPlaylistBtn.addEventListener('click', () => {
                 const newUrl = newPlaylistUrlInput.value.trim();
                 if (!newUrl || !newUrl.includes('spotify.com/playlist/')) {
+                    // Re-enable button if URL is invalid
+                    playAgainNewPlaylistBtn.disabled = false;
+                    playAgainNewPlaylistBtn.innerHTML = '<i class="fas fa-music mr-2"></i>Usar Nova Playlist';
                     displayError("Por favor, insira uma URL de playlist do Spotify válida.");
                     return;
                 }
