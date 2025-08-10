@@ -333,14 +333,31 @@ class GameRoom:
         await self.broadcast({"type": "game_over", "scoreboard": sorted(player_list, key=lambda p: p['score'], reverse=True), "winner": winner})
 
     async def reset_for_new_game(self, new_playlist_url: Optional[str], starter_username: str):
-        if starter_username != self.host.username: return
+        if starter_username != self.host.username:
+            return
+
+        logger.info(f"Room {self.room_id}: Host started a new game.")
+
         if new_playlist_url:
+            logger.info(f"Room {self.room_id}: Using new playlist: {new_playlist_url}")
             self.playlist_url = new_playlist_url
-            self._preparation_complete_event.clear()
-            self.game_tracks = []
-            self.all_playlist_titles = []
-            asyncio.create_task(self.prepare_game_in_background())
-        await self.start_game(starter_username)
+            playlist_cache.pop(self.playlist_url, None)
+
+        self.game_state = "LOBBY"
+        self.game_tracks = []
+        self.all_playlist_titles = []
+        self._preparation_complete_event.clear()
+        
+        for task in self._download_tasks:
+            task.cancel()
+        self._download_tasks = []
+
+        await self.broadcast({
+            "type": "rematch_initiated",
+            "message": "O anfitrião iniciou um novo jogo! Preparando novas músicas..."
+        })
+
+        asyncio.create_task(self.prepare_game_in_background())
 
 class GameManager:
     def __init__(self):

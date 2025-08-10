@@ -1024,6 +1024,7 @@
                         if (isHost) {
                             startGameBtn.classList.remove('hidden');
                             waitingForHost.classList.add('hidden');
+                            // O botão começa desabilitado até que o server confirme a prontidão
                         } else {
                             startGameBtn.classList.add('hidden');
                             waitingForHost.classList.remove('hidden');
@@ -1038,6 +1039,18 @@
                         } else {
                             playlistInfoDisplay.classList.add('hidden');
                         }
+                        break;
+                    case 'host_ready_to_start':
+                        startGameBtn.disabled = false;
+                        startGameBtn.innerHTML = '<i class="fas fa-play mr-3"></i>Começar o Jogo!';
+                        break;
+                    case 'rematch_initiated':
+                        showView('lobby-view');
+                        if (isHost) {
+                            startGameBtn.disabled = true;
+                            startGameBtn.innerHTML = '<i class="fas fa-hourglass-start mr-3"></i>Preparando...';
+                        }
+                        showSystemMessage(data.message, 'info', 5000);
                         break;
                     case 'game_prepared':
                         trackTitles = data.titles;
