@@ -212,9 +212,14 @@
                     <div class="space-y-4">
                         <div class="relative">
                             <i class="fab fa-spotify absolute left-4 top-1/2 transform -translate-y-1/2 text-green-500"></i>
-                            <input type="text" id="playlist-url-input" placeholder="URL da playlist do Spotify" 
+                            <input type="text" id="playlist-search-input" placeholder="Busque por playlists ou cole o link de uma" 
                                    class="w-full bg-slate-800/50 text-white pl-12 pr-4 py-3 rounded-xl border border-slate-700/50 focus:border-green-500 focus:outline-none input-glow">
+                            <div id="playlist-search-loading" class="hidden absolute right-4 top-1/2 transform -translate-y-1/2">
+                                <i class="fas fa-circle-notch spinner"></i>
+                            </div>
                         </div>
+                        <div id="playlist-results-container" class="mt-4 space-y-2 max-h-60 overflow-y-auto"></div>
+                        <input type="hidden" id="selected-playlist-url">
                         
                         <div class="relative">
                             <i class="fas fa-clock absolute left-4 top-1/2 transform -translate-y-1/2 text-cyan-400"></i>
@@ -608,7 +613,10 @@
             const forceUsernameView = document.getElementById('force-username-view');
 
             const usernameInput = document.getElementById('username-input');
-            const playlistUrlInput = document.getElementById('playlist-url-input');
+            const playlistSearchInput = document.getElementById('playlist-search-input');
+            const playlistResultsContainer = document.getElementById('playlist-results-container');
+            const playlistSearchLoading = document.getElementById('playlist-search-loading');
+            const selectedPlaylistUrlInput = document.getElementById('selected-playlist-url');
             const durationSelect = document.getElementById('duration-select');
             const createRoomBtn = document.getElementById('create-room-btn');
             const joinRoomBtn = document.getElementById('join-room-btn');
@@ -830,7 +838,10 @@
             async function createAndConnect() {
                 username = usernameInput.value.trim();
                 localStorage.setItem('username', username);
-                const playlistUrl = playlistUrlInput.value.trim();
+                let playlistUrl = playlistSearchInput.value.trim();
+                if (!playlistUrl.includes('spotify.com/playlist/')) {
+                    playlistUrl = selectedPlaylistUrlInput.value.trim();
+                }
                 const roundDuration = parseInt(durationSelect.value, 10);
                 let numRounds;
                 const selectedRoundsRadio = document.querySelector('input[name="rounds"]:checked');
@@ -849,7 +860,7 @@
                     return;
                 }
                 if (!username) { displayError("Por favor, digite um nome de usuário."); return; }
-                if (!playlistUrl || !playlistUrl.includes('spotify.com/playlist/')) { displayError("Por favor, insira uma URL de playlist do Spotify válida."); return; }
+                if (!playlistUrl) { displayError("Por favor, selecione uma playlist ou cole um link."); return; }
                 
                 showLoading("Criando sala...");
                 try {
@@ -1231,6 +1242,70 @@
                     displayError("Por favor, digite um nome de usuário.");
                 }
             });
+
+            const debounce = (func, delay) => {
+                let timeout;
+                return (...args) => {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => {
+                        func.apply(this, args);
+                    }, delay);
+                };
+            };
+
+            const searchPlaylists = async (query) => {
+                if (query.includes('spotify.com/playlist/')) {
+                    selectedPlaylistUrlInput.value = query;
+                    playlistResultsContainer.innerHTML = '';
+                    return;
+                }
+
+                if (query.length < 3) {
+                    playlistResultsContainer.innerHTML = '';
+                    return;
+                }
+
+                playlistSearchLoading.classList.remove('hidden');
+                playlistResultsContainer.innerHTML = '';
+
+                try {
+                    const response = await fetch(`/search-playlists?query=${encodeURIComponent(query)}`);
+                    const playlists = await response.json();
+
+                    if (playlists.length === 0) {
+                        playlistResultsContainer.innerHTML = '<p class="text-slate-400">Nenhuma playlist encontrada.</p>';
+                    } else {
+                        playlists.forEach(playlist => {
+                            const card = document.createElement('div');
+                            card.className = 'glass-light p-3 rounded-lg flex items-center gap-4 cursor-pointer hover:border-purple-500 border border-transparent transition-all';
+                            card.dataset.url = `https://open.spotify.com/playlist/${playlist.id}`;
+                            
+                            card.innerHTML = `
+                                <img src="${playlist.url_imagem || 'https://via.placeholder.com/64'}" alt="Capa da Playlist" class="w-16 h-16 rounded-md">
+                                <div>
+                                    <p class="font-bold text-white">${playlist.nome}</p>
+                                    <p class="text-sm text-slate-400">por ${playlist.criador}</p>
+                                </div>
+                            `;
+
+                            card.addEventListener('click', () => {
+                                selectedPlaylistUrlInput.value = card.dataset.url;
+                                playlistSearchInput.value = playlist.nome;
+                                playlistResultsContainer.innerHTML = '';
+                            });
+
+                            playlistResultsContainer.appendChild(card);
+                        });
+                    }
+                } catch (error) {
+                    console.error('Erro ao buscar playlists:', error);
+                    playlistResultsContainer.innerHTML = '<p class="text-red-400">Erro ao buscar playlists. Tente novamente.</p>';
+                } finally {
+                    playlistSearchLoading.classList.add('hidden');
+                }
+            };
+
+            playlistSearchInput.addEventListener('input', debounce(e => searchPlaylists(e.target.value), 300));
         });
     </script>
 </body>

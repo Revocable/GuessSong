@@ -2,7 +2,8 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPExcept
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from game_manager import game_manager, Player
+from game_manager import game_manager, Player, sp
+from spotipy import SpotifyException
 import logging
 import uvicorn
 
@@ -46,6 +47,26 @@ async def create_room(request: CreateRoomRequest):
 
     logger.info(f"Sala {room.room_id} criada por {request.username} com duração de {request.round_duration}s e {request.total_rounds} rodadas")
     return {"room_id": room.room_id}
+
+@app.get("/search-playlists")
+async def search_playlists(query: str):
+    if not query:
+        return []
+    try:
+        results = sp.search(q=query, type='playlist', limit=10)
+        playlists = []
+        for item in results['playlists']['items']:
+            if item:
+                playlists.append({
+                    "id": item['id'],
+                    "nome": item['name'],
+                    "criador": item['owner']['display_name'],
+                    "url_imagem": item['images'][0]['url'] if item['images'] else ""
+                })
+        return playlists
+    except SpotifyException as e:
+        logger.error(f"Error searching playlists: {e}")
+        raise HTTPException(status_code=500, detail="Error searching playlists on Spotify.")
 
 @app.websocket("/ws/{room_id}/{username}")
 async def websocket_endpoint(websocket: WebSocket, room_id: str, username: str):
