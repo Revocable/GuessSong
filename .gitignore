@@ -1,5 +1,6 @@
 venv/
-server/static/audio/*
 .env
 pycache/
 __pycache__/
+server/static/audio/*
+!server/static/audio/countdown.mp3

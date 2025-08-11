@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Guess the Song - Multiplayer</title>
+    <title>Adivinhe a Música - Multiplayer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
@@ -195,7 +195,7 @@
                 <div class="relative max-w-md mx-auto">
                     <i class="fas fa-user absolute left-4 top-1/2 transform -translate-y-1/2 text-purple-400"></i>
                     <input type="text" id="username-input" placeholder="Digite seu nome" 
-                           class="w-full bg-slate-800/50 text-white pl-12 pr-4 py-4 rounded-2xl border border-slate-700/50 focus:border-purple-500 focus:outline-none input-glow text-lg font-medium">
+                           class="w-full bg-slate-800/50 text-white pl-12 pr-4 py-4 rounded-2xl border border-slate-700/50 focus:border-purple-500 focus:outline-none input-glow text-lg font-medium" placeholder="Digite seu nome">
                 </div>
             </div>
 
@@ -234,7 +234,7 @@
                                 <label class="inline-flex items-center"><input type="radio" name="rounds" value="10" class="form-radio text-purple-500"><span class="ml-2 text-white">10</span></label>
                                 <label class="inline-flex items-center"><input type="radio" name="rounds" value="15" class="form-radio text-purple-500"><span class="ml-2 text-white">15</span></label>
                                 <label class="inline-flex items-center"><input type="radio" name="rounds" value="20" class="form-radio text-purple-500"><span class="ml-2 text-white">20</span></label>
-                                <label class="inline-flex items-center"><input type="radio" name="rounds" value="custom" class="form-radio text-purple-500"><span class="ml-2 text-white">Custom</span></label>
+                                <label class="inline-flex items-center"><input type="radio" name="rounds" value="custom" class="form-radio text-purple-500"><span class="ml-2 text-white">Personalizado</span></label>
                             </div>
                             <input type="number" id="custom-rounds-input" placeholder="Rodadas customizadas" class="hidden w-full bg-slate-800/50 text-white pl-4 pr-4 py-3 rounded-xl border border-slate-700/50 focus:border-purple-500 focus:outline-none input-glow mt-3" min="1" max="99">
                         </div>
@@ -422,6 +422,8 @@
     <div id="countdown-overlay" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
         <div id="countdown-number" class="text-9xl font-black text-white"></div>
     </div>
+
+    <audio id="countdown-sound" src="/static/audio/countdown.mp3" preload="auto"></audio>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -770,6 +772,7 @@
             }
 
             function showCountdown() {
+                document.getElementById('countdown-sound').play();
                 const numbers = [
                     { num: '3', color: '#f59e0b' },
                     { num: '2', color: '#06b6d4' },
@@ -898,8 +901,8 @@
                         updatePlayerList(data.players, playerListLobby, data.host_username);
                         if (data.playlist_name) {
                             playlistNameEl.textContent = data.playlist_name;
-                            playlistOwnerEl.textContent = `by ${data.playlist_owner_name}`;
-                            playlistCoverImg.src = data.playlist_cover_image_url || 'https://via.placeholder.com/96x96?text=No+Image';
+                            playlistOwnerEl.textContent = `por ${data.playlist_owner_name}`;
+                            playlistCoverImg.src = data.playlist_cover_image_url || 'https://via.placeholder.com/96x96?text=Sem+Imagem';
                             playlistInfoDisplay.classList.remove('hidden');
                         } else {
                             playlistInfoDisplay.classList.add('hidden');
@@ -936,8 +939,8 @@
                     case 'playlist_details_updated':
                         if (data.playlist_name) {
                             playlistNameEl.textContent = data.playlist_name;
-                            playlistOwnerEl.textContent = `by ${data.playlist_owner_name}`;
-                            playlistCoverImg.src = data.playlist_cover_image_url || 'https://via.placeholder.com/96x96?text=No+Image';
+                            playlistOwnerEl.textContent = `por ${data.playlist_owner_name}`;
+                            playlistCoverImg.src = data.playlist_cover_image_url || 'https://via.placeholder.com/96x96?text=Sem+Imagem';
                             playlistInfoDisplay.classList.remove('hidden');
                         } else {
                             playlistInfoDisplay.classList.add('hidden');

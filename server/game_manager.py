@@ -298,7 +298,7 @@ class GameRoom:
             await self.run_next_round()
         await self.end_game()
 
-    async def run_next_round(self):
+    """    async def run_next_round(self):
         self.current_round += 1
         self.current_song = self.game_tracks[self.current_round - 1]
 
@@ -316,7 +316,7 @@ class GameRoom:
         
         await self.broadcast_player_update()
         await self.broadcast({"type": "round_countdown"})
-        await asyncio.sleep(4.1)
+        await asyncio.sleep(2.1)
 
         await self.broadcast({
             "type": "start_round",
@@ -339,11 +339,20 @@ class GameRoom:
 
         if normalize_string(guess_text) == normalize_string(self.current_song['title']):
             time_taken = time.time() - self.round_start_time
-            player.score += max(10, 100 - int(time_taken * 5))
+            
+            points = 50
+            points -= int(time_taken * 2)
+
+            # Bonus for being the first to guess
+            if not any(p.has_answered for p in self.players.values()):
+                points += 20
+
+            final_points = max(10, points) # Minimum 10 points
+            player.score += final_points
             player.has_answered = True
             player.guess_time = time_taken
             logger.info(f"Player {username} guessed correctly. New score: {player.score}")
-            await self.broadcast({"type": "system_message", "message": f"✅ {username} acertou em {time_taken:.1f}s!", "level": "info"})
+            await self.broadcast({"type": "system_message", "message": f"✅ {username} acertou em {time_taken:.1f}s! (+{final_points})", "level": "info"})
             await self.broadcast_player_update()
             if all(p.has_answered or p.gave_up for p in self.players.values()): self._round_end_event.set()
         else:
@@ -362,6 +371,13 @@ class GameRoom:
     async def end_round(self):
         if self.game_state == "ROUND_OVER": return
         self.game_state = "ROUND_OVER"
+
+        answered_players = [p for p in self.players.values() if p.has_answered]
+        if len(answered_players) == 1:
+            answered_players[0].score += 50 # Bonus for being the only one
+            await self.broadcast({"type": "system_message", "message": f"✨ {answered_players[0].username} foi o único que acertou e ganhou 50 pontos de bônus!", "level": "info"})
+            await self.broadcast_player_update()
+
         for p in self.players.values():
             logger.info(f"Player {p.username} score at end of round: {p.score}")
         await self.broadcast({"type": "round_result", "correct_title": self.current_song['title'], "correct_artist": self.current_song['artist']})
@@ -394,7 +410,12 @@ class GameRoom:
         for task in self._download_tasks: task.cancel()
         self._download_tasks = []
 
-        asyncio.create_task(self.prepare_game_in_background(is_rematch=True, starter_username=starter_username))
+        for player in self.players.values():
+            player.reset_for_new_game()
+
+        await self.broadcast_player_update()
+
+        asyncio.create_task(self.prepare_game_in_background(is_rematch=True, starter_username=starter_username))""
 
 class GameManager:
     def __init__(self):
