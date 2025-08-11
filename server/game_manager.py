@@ -335,10 +335,21 @@ class GameRoom:
             await self.end_round()
 
     async def handle_guess(self, username: str, guess_text: str):
+        logger.info(f"Entering handle_guess for {username}. Current game_state: {self.game_state}")
         player = self.players.get(username)
-        if self.game_state != "PLAYING" or not player or player.has_answered or player.gave_up: return
+        if self.game_state != "PLAYING" or not player or player.has_answered or player.gave_up:
+            logger.info(f"handle_guess conditions not met for {username}. game_state: {self.game_state}, player: {player}, has_answered: {player.has_answered if player else 'N/A'}, gave_up: {player.gave_up if player else 'N/A'}")
+            return
 
-        if normalize_string(guess_text) == normalize_string(self.current_song['title']):
+        normalized_guess = normalize_string(guess_text)
+        normalized_song_title = normalize_string(self.current_song['title'])
+
+        logger.info(f"Raw Guess: {guess_text}")
+        logger.info(f"Raw Song Title: {self.current_song['title']}")
+        logger.info(f"Normalized Guess: {normalized_guess}")
+        logger.info(f"Normalized Song Title: {normalized_song_title}")
+
+        if normalized_guess == normalized_song_title:
             time_taken = time.time() - self.round_start_time
             player.has_answered = True
             player.guess_time = time_taken
@@ -346,6 +357,9 @@ class GameRoom:
             await self.broadcast({"type": "system_message", "message": f"✅ {username} acertou!", "level": "info"})
             await self.broadcast_player_update()
             if all(p.has_answered or p.gave_up for p in self.players.values()): self._round_end_event.set()
+        else:
+            await player.websocket.send_json({"type": "guess_result", "correct": False, "message": "Você errou! Tente novamente."})
+            logger.info(f"Sent wrong guess feedback to {username}.")
 
     async def handle_give_up(self, username: str):
         player = self.players.get(username)

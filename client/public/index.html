@@ -18,6 +18,83 @@
             --success: #10b981;
             --danger: #ef4444;
             --glass: rgba(15, 23, 42, 0.8);
+            --lava-bg-1: #4a0e6c;
+            --lava-bg-2: #2a0845;
+            --lava-blob-1: rgba(240, 120, 255, 0.8);
+            --lava-blob-2: #8b5cf6;
+            --lava-blob-3: #4c3aad;
+            --lava-blob-4: rgba(18, 15, 30, 0.0);
+            --lava-crisp-1: rgba(255, 255, 255, 0.15);
+            --lava-crisp-2: rgba(160, 230, 255, 0.1);
+            --lava-crisp-3: rgba(0, 0, 0, 0.0);
+        }
+
+        [data-theme="sunset"] {
+            --primary: #f97316;
+            --primary-dark: #ea580c;
+            --secondary: #ec4899;
+            --accent: #ef4444;
+            --glass: rgba(29, 25, 23, 0.8);
+            --lava-bg-1: #7f1d1d;
+            --lava-bg-2: #4a044e;
+            --lava-blob-1: rgba(251, 146, 60, 0.8);
+            --lava-blob-2: #f97316;
+            --lava-blob-3: #ec4899;
+            --lava-blob-4: rgba(29, 25, 23, 0.0);
+            --lava-crisp-1: rgba(253, 224, 71, 0.15);
+            --lava-crisp-2: rgba(251, 146, 60, 0.1);
+            --lava-crisp-3: rgba(0, 0, 0, 0.0);
+        }
+
+        [data-theme="forest"] {
+            --primary: #22c55e;
+            --primary-dark: #16a34a;
+            --secondary: #84cc16;
+            --accent: #f59e0b;
+            --glass: rgba(20, 30, 25, 0.8);
+            --lava-bg-1: #14532d;
+            --lava-bg-2: #0c4a6e;
+            --lava-blob-1: rgba(34, 197, 94, 0.8);
+            --lava-blob-2: #22c55e;
+            --lava-blob-3: #84cc16;
+            --lava-blob-4: rgba(20, 30, 25, 0.0);
+            --lava-crisp-1: rgba(134, 239, 172, 0.15);
+            --lava-crisp-2: rgba(163, 230, 53, 0.1);
+            --lava-crisp-3: rgba(0, 0, 0, 0.0);
+        }
+
+        [data-theme="ocean"] {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --secondary: #06b6d4;
+            --accent: #14b8a6;
+            --glass: rgba(15, 23, 42, 0.8);
+            --lava-bg-1: #0c4a6e;
+            --lava-bg-2: #1e3a8a;
+            --lava-blob-1: rgba(59, 130, 246, 0.8);
+            --lava-blob-2: #3b82f6;
+            --lava-blob-3: #06b6d4;
+            --lava-blob-4: rgba(15, 23, 42, 0.0);
+            --lava-crisp-1: rgba(96, 165, 250, 0.15);
+            --lava-crisp-2: rgba(34, 211, 238, 0.1);
+            --lava-crisp-3: rgba(0, 0, 0, 0.0);
+        }
+
+        [data-theme="ruby"] {
+            --primary: #ef4444;
+            --primary-dark: #dc2626;
+            --secondary: #f472b6;
+            --accent: #fde047;
+            --glass: rgba(30, 20, 20, 0.8);
+            --lava-bg-1: #881337;
+            --lava-bg-2: #4a044e;
+            --lava-blob-1: rgba(239, 68, 68, 0.8);
+            --lava-blob-2: #ef4444;
+            --lava-blob-3: #f472b6;
+            --lava-blob-4: rgba(30, 20, 20, 0.0);
+            --lava-crisp-1: rgba(251, 113, 133, 0.15);
+            --lava-crisp-2: rgba(244, 114, 182, 0.1);
+            --lava-crisp-3: rgba(0, 0, 0, 0.0);
         }
         
         body { 
@@ -54,7 +131,7 @@
         }
         
         .glass {
-            background: rgba(15, 23, 42, 0.85);
+            background: var(--glass);
             backdrop-filter: blur(20px);
             border: 1px solid rgba(148, 163, 184, 0.15);
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
@@ -66,10 +143,10 @@
             border: 1px solid rgba(148, 163, 184, 0.15);
         }
         
-        .gradient-primary { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); }
-        .gradient-secondary { background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); }
-        .gradient-success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
-        .gradient-accent { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+        .gradient-primary { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); }
+        .gradient-secondary { background: linear-gradient(135deg, var(--secondary) 0%, var(--accent) 100%); }
+        .gradient-success { background: linear-gradient(135deg, var(--success) 0%, #059669 100%); }
+        .gradient-accent { background: linear-gradient(135deg, var(--accent) 0%, #d97706 100%); }
         
         .bg-animated {
             background-size: 400% 400%;
@@ -97,8 +174,8 @@
         .float { animation: float 3s ease-in-out infinite; }
         
         @keyframes pulse-glow {
-            0%, 100% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.5); }
-            50% { box-shadow: 0 0 40px rgba(139, 92, 246, 0.8), 0 0 60px rgba(139, 92, 246, 0.4); }
+            0%, 100% { box-shadow: 0 0 20px var(--primary); }
+            50% { box-shadow: 0 0 40px var(--primary-dark), 0 0 60px var(--primary); }
         }
         
         .pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
@@ -112,8 +189,8 @@
         
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb { background: rgba(139, 92, 246, 0.6); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(139, 92, 246, 0.8); }
+        ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary-dark); }
         
         .btn-hover { transition: all 0.3s ease; transform: translateY(0); }
         .btn-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3); }
@@ -122,12 +199,12 @@
         .card-hover:hover { transform: translateY(-5px); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); }
         
         .input-glow { transition: all 0.3s ease; }
-        .input-glow:focus { box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.3), 0 0 20px rgba(139, 92, 246, 0.2); }
+        .input-glow:focus { box-shadow: 0 0 0 3px var(--primary), 0 0 20px var(--primary-dark); }
         
-        .neon-text { text-shadow: 0 0 10px rgba(139, 92, 246, 0.8), 0 0 20px rgba(139, 92, 246, 0.5); }
+        .neon-text { text-shadow: 0 0 10px var(--primary), 0 0 20px var(--primary-dark); }
         
         .particles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1; opacity: 0.3; }
-        .particle { position: absolute; background: rgba(139, 92, 246, 0.2); border-radius: 50%; animation: particleFloat 8s ease-in-out infinite; }
+        .particle { position: absolute; background: var(--primary); border-radius: 50%; animation: particleFloat 8s ease-in-out infinite; }
         
         @keyframes particleFloat {
             0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0; }
@@ -367,7 +444,7 @@
 
             <div class="glass rounded-2xl p-6">
                 <div class="mb-4 text-center">
-                    <p id="system-message-display" class="font-semibold text-lg h-7"></p>
+                    <p id="system-message-display" class="font-semibold text-lg"></p>
                 </div>
                 
                 <div class="flex items-center space-x-3">
@@ -451,6 +528,19 @@
 
     <audio id="countdown-sound" src="/static/audio/countdown.mp3" preload="auto"></audio>
 
+    <div id="theme-switcher" class="fixed bottom-4 right-4 z-50">
+        <button id="theme-switcher-btn" class="w-12 h-12 bg-gray-800/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white shadow-lg btn-hover">
+            <i class="fas fa-palette text-xl"></i>
+        </button>
+        <div id="theme-options" class="hidden absolute bottom-16 right-0 bg-slate-800/80 backdrop-blur-sm rounded-xl p-3 space-y-3 shadow-2xl">
+            <button data-theme="default" class="w-10 h-10 rounded-full" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);" title="Padrão"></button>
+            <button data-theme="sunset" class="w-10 h-10 rounded-full" style="background: linear-gradient(135deg, #f97316 0%, #ec4899 100%);" title="Pôr do Sol"></button>
+            <button data-theme="forest" class="w-10 h-10 rounded-full" style="background: linear-gradient(135deg, #22c55e 0%, #84cc16 100%);" title="Floresta"></button>
+            <button data-theme="ocean" class="w-10 h-10 rounded-full" style="background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);" title="Oceano"></button>
+            <button data-theme="ruby" class="w-10 h-10 rounded-full" style="background: linear-gradient(135deg, #ef4444 0%, #f472b6 100%);" title="Rubi"></button>
+        </div>
+    </div>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             // --- LAVA LAMP & AUDIO VISUALIZATION SETUP ---
@@ -492,6 +582,17 @@
                 const dt = Math.min(0.05, (now - last) / 1000);
                 last = now;
 
+                const computedStyle = getComputedStyle(document.documentElement);
+                const lavaBg1 = computedStyle.getPropertyValue('--lava-bg-1');
+                const lavaBg2 = computedStyle.getPropertyValue('--lava-bg-2');
+                const lavaBlob1 = computedStyle.getPropertyValue('--lava-blob-1');
+                const lavaBlob2 = computedStyle.getPropertyValue('--lava-blob-2');
+                const lavaBlob3 = computedStyle.getPropertyValue('--lava-blob-3');
+                const lavaBlob4 = computedStyle.getPropertyValue('--lava-blob-4');
+                const lavaCrisp1 = computedStyle.getPropertyValue('--lava-crisp-1');
+                const lavaCrisp2 = computedStyle.getPropertyValue('--lava-crisp-2');
+                const lavaCrisp3 = computedStyle.getPropertyValue('--lava-crisp-3');
+
                 const intensity = getAudioIntensity();
                 const scaleFactor = 1 + intensity * 1.2;
                 const minScaleFactor = 0.8;
@@ -501,8 +602,8 @@
                 ctx2.clearRect(0, 0, W, H);
 
                 const bg = ctx.createLinearGradient(0, 0, 0, H);
-                bg.addColorStop(0, '#4a0e6c');
-                bg.addColorStop(1, '#2a0845');
+                bg.addColorStop(0, lavaBg1);
+                bg.addColorStop(1, lavaBg2);
                 ctx.fillStyle = bg;
                 ctx.fillRect(0, 0, W, H);
 
@@ -525,10 +626,10 @@
                 for (let i = 0; i < blobs.length; i++) {
                     const bb = blobs[i];
                     const g = ctx.createRadialGradient(bb.x, bb.y, bb.r * 0.05, bb.x, bb.y, bb.r);
-                    g.addColorStop(0, `rgba(240, 120, 255,${0.8 * effectiveScaleFactor})`);
-                    g.addColorStop(0.3, `rgba(139, 92, 246,${0.6 * effectiveScaleFactor})`);
-                    g.addColorStop(0.7, `rgba(76, 58, 173,${0.4 * effectiveScaleFactor})`);
-                    g.addColorStop(1, `rgba(18, 15, 30,0.0)`);
+                    g.addColorStop(0, lavaBlob1);
+                    g.addColorStop(0.3, lavaBlob2);
+                    g.addColorStop(0.7, lavaBlob3);
+                    g.addColorStop(1, lavaBlob4);
                     ctx.beginPath();
                     ctx.fillStyle = g;
                     ctx.arc(bb.x, bb.y, bb.r, 0, Math.PI * 2);
@@ -539,9 +640,9 @@
                     const b = blobs[i];
                     const radius = b.r * 0.5;
                     const g2 = ctx2.createRadialGradient(b.x - b.r * 0.12, b.y - b.r * 0.12, 0, b.x, b.y, radius);
-                    g2.addColorStop(0, `rgba(255,255,255,${0.15 * effectiveScaleFactor})`);
-                    g2.addColorStop(0.3, `rgba(160,230,255,${0.1 * effectiveScaleFactor})`);
-                    g2.addColorStop(1, 'rgba(0,0,0,0.0)');
+                    g2.addColorStop(0, lavaCrisp1);
+                    g2.addColorStop(0.3, lavaCrisp2);
+                    g2.addColorStop(1, lavaCrisp3);
                     ctx2.beginPath();
                     ctx2.fillStyle = g2;
                     ctx2.arc(b.x, b.y, radius, 0, Math.PI * 2);
@@ -661,6 +762,9 @@
             const playlistCoverImg = document.getElementById('playlist-cover-img');
             const playlistNameEl = document.getElementById('playlist-name');
             const playlistOwnerEl = document.getElementById('playlist-owner');
+
+            const themeSwitcherBtn = document.getElementById('theme-switcher-btn');
+            const themeOptions = document.getElementById('theme-options');
 
             // --- Game State & Audio Analysis ---
             let ws = null;
@@ -808,7 +912,9 @@
             }
 
             function showCountdown() {
-                document.getElementById('countdown-sound').play();
+                const countdownSound = document.getElementById('countdown-sound');
+                countdownSound.volume = 0.2;
+                countdownSound.play();
                 const numbers = [
                     { num: '3', color: '#f59e0b' },
                     { num: '2', color: '#06b6d4' },
@@ -962,6 +1068,7 @@
                         break;
                     case 'game_prepared':
                         trackTitles = data.titles;
+                        console.log("trackTitles populated:", trackTitles);
                         break;
                     case 'update_players':
                         const isLobby = lobbyView.offsetParent !== null;
@@ -1003,6 +1110,7 @@
                         }
                         break;
                     case 'guess_result':
+                        console.log("Guess result received:", data);
                         if (data.correct === false) {
                             showSystemMessage(data.message, 'error', 2000);
                         }
@@ -1123,6 +1231,7 @@
                     return;
                 }
                 const filteredTitles = trackTitles.filter(title => title.toLowerCase().startsWith(value)).slice(0, 5);
+                console.log("Filtered Titles:", filteredTitles);
                 if (filteredTitles.length > 0) {
                     filteredTitles.forEach(title => {
                         const item = document.createElement('div');
@@ -1217,6 +1326,7 @@
             if (savedUsername) {
                 usernameInput.value = savedUsername;
             }
+            playlistSearchInput.value = '';
 
             if (window.location.hash) {
                 const roomIdFromUrl = window.location.hash.substring(2);
@@ -1306,6 +1416,30 @@
             };
 
             playlistSearchInput.addEventListener('input', debounce(e => searchPlaylists(e.target.value), 300));
+
+            themeSwitcherBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                themeOptions.classList.toggle('hidden');
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!themeOptions.contains(e.target) && !themeSwitcherBtn.contains(e.target)) {
+                    themeOptions.classList.add('hidden');
+                }
+            });
+
+            themeOptions.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON') {
+                    const theme = e.target.dataset.theme;
+                    document.documentElement.setAttribute('data-theme', theme);
+                    localStorage.setItem('theme', theme);
+                }
+            });
+
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
         });
     </script>
 </body>
