@@ -270,16 +270,37 @@
             <p id="error-message" class="text-red-400 mt-6 h-6 font-medium"></p>
         </div>
 
+        <div id="force-username-view" class="hidden glass rounded-3xl p-6 sm:p-8 lg:p-12 text-center card-hover">
+            <h2 class="text-2xl font-bold mb-4">Digite seu nome para entrar na sala</h2>
+            <div class="relative max-w-md mx-auto">
+                <i class="fas fa-user absolute left-4 top-1/2 transform -translate-y-1/2 text-purple-400"></i>
+                <input type="text" id="force-username-input" placeholder="Seu nome de usuário" 
+                       class="w-full bg-slate-800/50 text-white pl-12 pr-4 py-4 rounded-2xl border border-slate-700/50 focus:border-purple-500 focus:outline-none input-glow text-lg font-medium">
+            </div>
+            <button id="force-join-btn" class="w-full mt-4 gradient-success hover:shadow-lg p-4 rounded-xl font-bold text-lg transition-all btn-hover">
+                <i class="fas fa-door-open mr-2"></i>Entrar na Sala
+            </button>
+        </div>
+
         <div id="lobby-view" class="hidden glass rounded-3xl p-6 sm:p-8">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 space-y-4 sm:space-y-0">
                 <div>
                     <h2 class="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">Lobby da Sala</h2>
                     <p class="text-slate-400 mt-2">Aguardando jogadores se conectarem...</p>
                 </div>
-                <div class="glass-light p-4 rounded-2xl text-center">
-                    <p class="text-slate-400 text-sm mb-1">Código da Sala</p>
-                    <button id="room-code-display" class="gradient-accent text-black font-bold text-xl px-4 py-2 rounded-lg font-mono tracking-wider hover:scale-105 transition-transform" title="Clique para copiar"></button>
-                    <p class="text-xs text-slate-500 mt-1">Clique para copiar</p>
+                <div class="flex justify-center items-center gap-4">
+                    <div class="glass-light p-4 rounded-2xl text-center">
+                        <p class="text-slate-400 text-sm mb-1">Código da Sala</p>
+                        <button id="room-code-display" class="gradient-accent text-black font-bold text-xl px-4 py-2 rounded-lg font-mono tracking-wider hover:scale-105 transition-transform" title="Clique para copiar"></button>
+                        <p class="text-xs text-slate-500 mt-1">Clique para copiar</p>
+                    </div>
+                    <div class="glass-light p-4 rounded-2xl text-center">
+                        <p class="text-slate-400 text-sm mb-1">Link da Sala</p>
+                        <button id="copy-link-btn" class="gradient-secondary text-white font-bold text-xl px-4 py-2 rounded-lg hover:scale-105 transition-transform" title="Clique para copiar">
+                            <i class="fas fa-link"></i>
+                        </button>
+                        <p class="text-xs text-slate-500 mt-1">Copiar Link</p>
+                    </div>
                 </div>
             </div>
 
@@ -584,6 +605,7 @@
             const gameOverView = document.getElementById('game-over-view');
             const countdownOverlay = document.getElementById('countdown-overlay');
             const countdownNumber = document.getElementById('countdown-number');
+            const forceUsernameView = document.getElementById('force-username-view');
 
             const usernameInput = document.getElementById('username-input');
             const playlistUrlInput = document.getElementById('playlist-url-input');
@@ -592,11 +614,14 @@
             const joinRoomBtn = document.getElementById('join-room-btn');
             const roomCodeInput = document.getElementById('room-code-input');
             const errorMessage = document.getElementById('error-message');
+            const forceUsernameInput = document.getElementById('force-username-input');
+            const forceJoinBtn = document.getElementById('force-join-btn');
 
             const roundsRadioButtons = document.querySelectorAll('input[name="rounds"]');
             const customRoundsInput = document.getElementById('custom-rounds-input');
 
             const roomCodeDisplay = document.getElementById('room-code-display');
+            const copyLinkBtn = document.getElementById('copy-link-btn');
             const playerListLobby = document.getElementById('player-list-lobby');
             const startGameBtn = document.getElementById('start-game-btn');
             const waitingForHost = document.getElementById('waiting-for-host');
@@ -683,7 +708,7 @@
             }
 
             function showView(viewId) {
-                [entryView, lobbyView, gameView, gameOverView, playAgainModal].forEach(v => v.classList.add('hidden'));
+                [entryView, lobbyView, gameView, gameOverView, playAgainModal, forceUsernameView].forEach(v => v.classList.add('hidden'));
                 document.getElementById(viewId).classList.remove('hidden');
             }
 
@@ -847,7 +872,11 @@
                 username = usernameInput.value.trim();
                 localStorage.setItem('username', username);
                 const code = roomCodeInput.value.trim().toUpperCase();
-                if (!username) { displayError("Por favor, digite um nome de usuário."); return; }
+                if (!username) { 
+                    showView('force-username-view');
+                    forceUsernameInput.focus();
+                    return;
+                }
                 if (!code) { displayError("Por favor, insira um código de sala."); return; }
                 showLoading("Entrando na sala...");
                 setupAudioAnalysis();
@@ -1157,12 +1186,48 @@
                 });
             });
 
+            copyLinkBtn.addEventListener('click', () => {
+                const link = `${window.location.origin}/#/${roomId}`;
+                navigator.clipboard.writeText(link).then(() => {
+                    const originalContent = copyLinkBtn.innerHTML;
+                    copyLinkBtn.innerHTML = '<i class="fas fa-check mr-1"></i>Copiado!';
+                    copyLinkBtn.classList.add('bg-green-500');
+                    setTimeout(() => {
+                        copyLinkBtn.innerHTML = originalContent;
+                        copyLinkBtn.classList.remove('bg-green-500');
+                    }, 1500);
+                });
+            });
+
             const savedUsername = localStorage.getItem('username');
             if (savedUsername) {
                 usernameInput.value = savedUsername;
             }
 
-            usernameInput.focus();
+            if (window.location.hash) {
+                const roomIdFromUrl = window.location.hash.substring(2);
+                if (roomIdFromUrl) {
+                    roomCodeInput.value = roomIdFromUrl;
+                    if (!savedUsername) {
+                        showView('force-username-view');
+                        forceUsernameInput.focus();
+                    } else {
+                        joinAndConnect();
+                    }
+                }
+            } else {
+                usernameInput.focus();
+            }
+
+            forceJoinBtn.addEventListener('click', () => {
+                const username = forceUsernameInput.value.trim();
+                if (username) {
+                    usernameInput.value = username;
+                    joinAndConnect();
+                } else {
+                    displayError("Por favor, digite um nome de usuário.");
+                }
+            });
         });
     </script>
 </body>

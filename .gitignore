@@ -4,3 +4,4 @@ pycache/
 __pycache__/
 server/static/audio/*
 !server/static/audio/countdown.mp3
+.cache

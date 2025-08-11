@@ -339,26 +339,12 @@ class GameRoom:
 
         if normalize_string(guess_text) == normalize_string(self.current_song['title']):
             time_taken = time.time() - self.round_start_time
-            
-            points = 50
-            points -= int(time_taken * 2)
-
-            # Bonus for being the first to guess
-            if not any(p.has_answered for p in self.players.values()):
-                points += 20
-
-            final_points = max(10, points) # Minimum 10 points
-            player.score += final_points
             player.has_answered = True
             player.guess_time = time_taken
-            logger.info(f"Player {username} guessed correctly. New score: {player.score}")
-            await self.broadcast({"type": "system_message", "message": f"✅ {username} acertou em {time_taken:.1f}s! (+{final_points})", "level": "info"})
+            logger.info(f"Player {username} guessed correctly in {time_taken:.1f}s.")
+            await self.broadcast({"type": "system_message", "message": f"✅ {username} acertou!", "level": "info"})
             await self.broadcast_player_update()
             if all(p.has_answered or p.gave_up for p in self.players.values()): self._round_end_event.set()
-        else:
-            if player.websocket:
-                try: await player.websocket.send_json({"type": "guess_result", "correct": False, "message": "Você errou! Tente novamente."})
-                except Exception as e: logger.warning(f"Não foi possível enviar feedback de erro para {username}: {e}")
 
     async def handle_give_up(self, username: str):
         player = self.players.get(username)
@@ -372,11 +358,43 @@ class GameRoom:
         if self.game_state == "ROUND_OVER": return
         self.game_state = "ROUND_OVER"
 
-        answered_players = [p for p in self.players.values() if p.has_answered]
-        if len(answered_players) == 1:
-            answered_players[0].score += 50 # Bonus for being the only one
-            await self.broadcast({"type": "system_message", "message": f"✨ {answered_players[0].username} foi o único que acertou e ganhou 50 pontos de bônus!", "level": "info"})
-            await self.broadcast_player_update()
+        answered_players = sorted([p for p in self.players.values() if p.has_answered], key=lambda p: p.guess_time)
+        
+        acertadores_totais = len(answered_players)
+        total_jogadores = len(self.players)
+        tempo_maximo = self.game_settings["round_duration"]
+
+        for i, player in enumerate(answered_players):
+            posicao_acerto = i + 1
+            tempo_resposta = player.guess_time
+
+            # Calculate points
+            pontos_base = 50
+            penalidade_tempo = (tempo_resposta / tempo_maximo) * 0.5
+            pontos = pontos_base * (1 - penalidade_tempo)
+            if pontos < 10:
+                pontos = 10
+
+            # First guess bonus
+            bonus_primeiro = 0
+            if posicao_acerto == 1 and acertadores_totais > 1:
+                tempo_segundo_colocado = answered_players[1].guess_time
+                diferenca_segundos = tempo_segundo_colocado - tempo_resposta
+                bonus_primeiro = round(10 * (1 - (diferenca_segundos / 5)))
+                if bonus_primeiro < 0:
+                    bonus_primeiro = 0
+            
+            # Solo guess bonus
+            bonus_unico = 0
+            if acertadores_totais == 1:
+                bonus_unico = 5 * (total_jogadores - 1)
+
+            pontuacao_final = round(pontos + bonus_primeiro + bonus_unico)
+            player.score += pontuacao_final
+            
+            await self.broadcast({"type": "system_message", "message": f"✨ {player.username} ganhou {pontuacao_final} pontos!", "level": "info"})
+
+        await self.broadcast_player_update()
 
         for p in self.players.values():
             logger.info(f"Player {p.username} score at end of round: {p.score}")
