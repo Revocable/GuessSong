@@ -298,7 +298,7 @@ class GameRoom:
             await self.run_next_round()
         await self.end_game()
 
-    """    async def run_next_round(self):
+    async def run_next_round(self):
         self.current_round += 1
         self.current_song = self.game_tracks[self.current_round - 1]
 
@@ -415,7 +415,7 @@ class GameRoom:
 
         await self.broadcast_player_update()
 
-        asyncio.create_task(self.prepare_game_in_background(is_rematch=True, starter_username=starter_username))""
+        asyncio.create_task(self.prepare_game_in_background(is_rematch=True, starter_username=starter_username))
 
 class GameManager:
     def __init__(self):
