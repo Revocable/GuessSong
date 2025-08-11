@@ -54,12 +54,13 @@ class Player:
         self.username = username
         self.websocket = websocket
         self.score = 0
+        self.wins = 0
         self.has_answered = False
         self.gave_up = False
         self.guess_time: Optional[float] = None
 
     def to_dict(self):
-        return {"username": self.username, "score": self.score, "has_answered": self.has_answered, "gave_up": self.gave_up, "guess_time": self.guess_time}
+        return {"username": self.username, "score": self.score, "wins": self.wins, "has_answered": self.has_answered, "gave_up": self.gave_up, "guess_time": self.guess_time}
 
     def reset_for_new_round(self):
         self.has_answered = False
@@ -405,8 +406,21 @@ class GameRoom:
     async def end_game(self):
         self.game_state = "GAME_OVER"
         self.played_track_ids.update(t['id'] for t in self.game_tracks)
+
         player_list = [p.to_dict() for p in self.players.values()]
-        winner = max(player_list, key=lambda p: p['score'], default=None)
+        if player_list:
+            winner = max(player_list, key=lambda p: p['score'])
+            
+            # Increment wins for the winner
+            winner_player = self.players.get(winner['username'])
+            if winner_player:
+                winner_player.wins += 1
+            
+            # Get updated player list with new win count
+            player_list = [p.to_dict() for p in self.players.values()]
+        else:
+            winner = None
+
         await self.broadcast({"type": "game_over", "scoreboard": sorted(player_list, key=lambda p: p['score'], reverse=True), "winner": winner})
 
     async def reset_for_new_game(self, new_playlist_url: Optional[str], starter_username: str):

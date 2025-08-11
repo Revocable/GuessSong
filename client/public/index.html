@@ -734,6 +734,8 @@
                     const gaveUpIcon = player.gave_up ? `<i class="fas fa-flag text-slate-400 ml-2" title="Desistiu"></i>` : '';
                     const isCurrentUser = player.username === username;
                     
+                    const winsContent = player.wins > 0 ? `<span class="text-amber-400 ml-2 font-bold"><i class="fas fa-trophy mr-1"></i> ${player.wins}</span>` : '';
+
                     playerEl.innerHTML = `
                         <div class="flex justify-between items-center">
                             <div class="flex items-center">
@@ -755,6 +757,7 @@
                                     ${player.score}
                                 </span>
                                 <span class="text-slate-400 text-sm ml-1">pts</span>
+                                ${winsContent}
                             </div>
                         </div>
                     `;
