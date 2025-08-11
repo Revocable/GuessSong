@@ -878,14 +878,15 @@
 
             function handleWebSocketMessage(data) {
                 console.log("Mensagem recebida:", data);
-                hideLoading();
                 switch (data.type) {
                     case 'error':
+                        hideLoading();
                         displayError(data.message);
                         if (ws) ws.close();
                         showView('entry-view');
                         break;
                     case 'room_joined':
+                        hideLoading();
                         isHost = data.is_host;
                         roomCodeDisplay.textContent = data.room_id;
                         if (isHost) {
@@ -909,6 +910,7 @@
                         }
                         break;
                     case 'host_ready_to_start':
+                        hideLoading();
                         startGameBtn.disabled = false;
                         startGameBtn.innerHTML = '<i class="fas fa-play mr-3"></i>Começar o Jogo!';
                         break;
@@ -947,7 +949,7 @@
                         }
                         break;
                     case 'system_message':
-                        if (data.message.toLowerCase().includes('baixando') || data.message.toLowerCase().includes('downloading')) {
+                        if (data.message.toLowerCase().includes('baixando') || data.message.toLowerCase().includes('downloading') || data.message.toLowerCase().includes('preparando')) {
                             showLoading(data.message);
                         } else {
                             hideLoading();
@@ -963,11 +965,13 @@
                         }
                         break;
                     case 'round_countdown':
+                        hideLoading();
                         showView('game-view');
                         systemMessageDisplay.textContent = 'Prepare-se!';
                         showCountdown();
                         break;
                     case 'start_round':
+                        hideLoading();
                         systemMessageDisplay.textContent = '';
                         guessInput.value = '';
                         guessInput.disabled = false;
@@ -991,10 +995,16 @@
                         giveUpBtn.disabled = true;
                         break;
                     case 'game_over':
+                        hideLoading();
                         audio.pause();
                         showView('game-over-view');
-                        playAgainBtn.classList.remove('hidden');
-                        waitingForHostRematch.classList.add('hidden');
+                        if (isHost) {
+                            playAgainBtn.classList.remove('hidden');
+                            waitingForHostRematch.classList.add('hidden');
+                        } else {
+                            playAgainBtn.classList.add('hidden');
+                            waitingForHostRematch.classList.remove('hidden');
+                        }
                         const winner = data.winner;
                         if (winner) {
                             winnerAnnouncement.innerHTML = `

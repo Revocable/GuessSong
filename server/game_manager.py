@@ -316,7 +316,7 @@ class GameRoom:
         
         await self.broadcast_player_update()
         await self.broadcast({"type": "round_countdown"})
-        await asyncio.sleep(2.1)
+        await asyncio.sleep(4.1)
 
         await self.broadcast({
             "type": "start_round",
