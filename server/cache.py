@@ -265,8 +265,14 @@ async def main(playlist_urls: List[str], concurrency: int):
     
     # 1. Buscar todas as faixas das playlists e adicionar ao DB
     all_tracks_from_spotify = []
-    processed_ids = db_manager.get_all_processed_track_ids()
-    logger.info(f"{len(processed_ids)} faixas já processadas encontradas no DB.")
+    
+    # Verificar se o DB está funcionando corretamente
+    try:
+        processed_ids = db_manager.get_all_processed_track_ids()
+        logger.info(f"{len(processed_ids)} faixas já processadas encontradas no DB.")
+    except Exception as e:
+        logger.error(f"Erro ao acessar banco de dados: {e}")
+        processed_ids = set()
     
     for url in playlist_urls:
         tracks = await fetch_playlist_tracks(url)
@@ -275,13 +281,61 @@ async def main(playlist_urls: List[str], concurrency: int):
         all_tracks_from_spotify.extend(unprocessed_tracks)
     
     if all_tracks_from_spotify:
-        db_manager.add_tracks_to_db(all_tracks_from_spotify)
-        logger.info(f"Adicionadas {len(all_tracks_from_spotify)} novas faixas ao banco de dados.")
+        try:
+            db_manager.add_tracks_to_db(all_tracks_from_spotify)
+            logger.info(f"Adicionadas {len(all_tracks_from_spotify)} novas faixas ao banco de dados.")
+        except Exception as e:
+            logger.error(f"Erro ao adicionar faixas ao banco de dados: {e}")
+            return
     
     # 2. Primeira tentativa de download para faixas pendentes
     logger.info("\n--- Fase 1: Primeira Tentativa de Download ---")
-    pending_tracks = db_manager.get_tracks_by_status('pending')
-    logger.info(f"Encontradas {len(pending_tracks)} faixas pendentes para baixar.")
+    try:
+        pending_tracks = db_manager.get_tracks_by_status('pending')
+        logger.info(f"Encontradas {len(pending_tracks)} faixas pendentes para baixar.")
+        
+        # Se não há faixas pendentes mas acabamos de adicionar faixas, há um problema
+        if len(pending_tracks) == 0 and len(all_tracks_from_spotify) > 0:
+            logger.warning("AVISO: Faixas foram adicionadas mas nenhuma está com status 'pending'")
+            logger.info("Verificando todos os status no banco de dados...")
+            
+            # Debug: verificar todos os status
+            all_statuses = {}
+            try:
+                # Assumindo que existe um método para pegar todas as tracks (precisamos criar se não existir)
+                all_tracks = db_manager.get_all_tracks()  # Método que talvez precise ser implementado
+                for track in all_tracks:
+                    status = track.get('status', 'unknown')
+                    all_statuses[status] = all_statuses.get(status, 0) + 1
+                
+                logger.info(f"Status das faixas no DB: {all_statuses}")
+                
+                # Se todas estão como 'downloaded' mas não temos arquivos, resetar
+                if all_statuses.get('downloaded', 0) > 0:
+                    logger.info("Verificando se arquivos realmente existem...")
+                    downloaded_tracks = db_manager.get_tracks_by_status('downloaded')
+                    files_missing = 0
+                    for track in downloaded_tracks:
+                        if track.get('filepath'):
+                            file_path = Path(track['filepath'])
+                            if not file_path.exists() or file_path.stat().st_size == 0:
+                                files_missing += 1
+                                # Resetar status para pending
+                                db_manager.update_track_status(track['id'], 'pending')
+                    
+                    if files_missing > 0:
+                        logger.info(f"Resetados {files_missing} tracks para 'pending' (arquivos não encontrados)")
+                        pending_tracks = db_manager.get_tracks_by_status('pending')
+                        
+            except Exception as e:
+                logger.error(f"Erro ao verificar status das tracks: {e}")
+                # Como fallback, pegar as primeiras 10 tracks para testar
+                logger.info("Tentando pegar algumas tracks para teste...")
+                pending_tracks = all_tracks_from_spotify[:10] if all_tracks_from_spotify else []
+                
+    except Exception as e:
+        logger.error(f"Erro ao buscar faixas pendentes: {e}")
+        pending_tracks = []
     
     stats1 = await process_downloads(pending_tracks, concurrency, is_retry=False)
     
