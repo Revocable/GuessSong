@@ -363,22 +363,26 @@ async def download_track_async(track: Dict, is_retry=False):
             
             if success:
                 # Verificar se o arquivo realmente existe
-                final_file = output_path.with_suffix('.webm')
+                final_file = None
                 
-                # Procurar qualquer arquivo com o nome base se .webm não existir
-                if not final_file.exists():
+                # Primeiro tentar o arquivo .webm esperado
+                webm_file = output_path.with_suffix('.webm')
+                if webm_file.exists() and webm_file.stat().st_size > 5000:
+                    final_file = webm_file
+                else:
+                    # Procurar qualquer arquivo com o nome base se .webm não existir
                     base_path = output_path.with_suffix('')
                     for file_path in base_path.parent.glob(f"{base_path.name}.*"):
                         if file_path.suffix.lower() in ['.webm', '.m4a', '.mp3', '.opus'] and file_path.stat().st_size > 5000:
                             final_file = file_path
                             break
                 
-                if final_file.exists() and final_file.stat().st_size > 5000:
+                if final_file and final_file.exists() and final_file.stat().st_size > 5000:
                     logger.info(f"SUCESSO: '{title}' baixado ({final_file.stat().st_size} bytes).")
                     db.update_track_status(track_id, 'downloaded', str(final_file))
                     return 'downloaded'
                 else:
-                    logger.debug(f"Arquivo não existe após download 'bem-sucedido': {final_file}")
+                    logger.debug(f"Arquivo não encontrado após download: esperado {output_path}")
                     success = False
             
             if success:
