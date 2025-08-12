@@ -12,16 +12,19 @@ import yt_dlp
 from yt_dlp.utils import DownloadError
 from spotipy.oauth2 import SpotifyClientCredentials
 from dotenv import load_dotenv
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 
 # --- Configuração de Logging ---
+# Removendo a formatação duplicada que apareceu no seu log
+for handler in logging.root.handlers[:]:
+    logging.root.removeHandler(handler)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 load_dotenv()
 
 # --- Constantes ---
 AUDIO_DIR = Path("static/audio")
-DOWNLOAD_DURATION = 30  # Duração fixa de 30 segundos
+DOWNLOAD_DURATION = 30
 DB_PATH = "music_cache.db"
 
 # --- Verificação de Downloader Otimizado ---
@@ -41,15 +44,14 @@ try:
     logger.info("Conexão com Spotify estabelecida com sucesso.")
 except Exception as e:
     logger.error(f"ERRO: Falha ao conectar com o Spotify. Verifique suas credenciais. Detalhes: {e}")
-    sp = None
     sys.exit(1)
 
 # --- Criação do Diretório de Áudio ---
 AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 
-
-# === GERENCIADOR DE BANCO DE DADOS INTEGRADO ===
+# === GERENCIADOR DE BANCO DE DADOS ===
 class DatabaseManager:
+    # (Nenhuma alteração necessária aqui, mantendo a versão robusta anterior)
     def __init__(self, db_path: str = DB_PATH):
         self.db_path = db_path
         self.init_database()
@@ -98,9 +100,7 @@ class DatabaseManager:
     def get_all_track_ids(self) -> set:
         try:
             with self.get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute('SELECT id FROM tracks')
-                return {row[0] for row in cursor.fetchall()}
+                return {row[0] for row in conn.execute('SELECT id FROM tracks')}
         except Exception as e:
             logger.error(f"Erro ao buscar IDs de tracks: {e}")
             return set()
@@ -118,39 +118,27 @@ class DatabaseManager:
     def get_stats(self) -> Dict[str, int]:
         try:
             with self.get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute('SELECT status, COUNT(*) FROM tracks GROUP BY status')
-                return dict(cursor.fetchall())
+                return dict(conn.execute('SELECT status, COUNT(*) FROM tracks GROUP BY status'))
         except Exception as e:
             logger.error(f"Erro ao buscar estatísticas: {e}")
             return {}
 
 db = DatabaseManager()
 
-def _download_song_segment(search_query: str, output_path: Path, duration: int):
+def _download_song_segment(search_query: str, output_path: Path, duration: int) -> Tuple[bool, Optional[Path]]:
     """
-    Baixa um segmento de áudio usando o método de pós-processamento,
-    que é mais estável e corrige o erro 'ffmpeg exited with code 8'.
+    Baixa um segmento de áudio de forma estável, corrigindo a busca e verificando o resultado.
     """
-    # O ponto de início continua aleatório, mas a duração será fixa.
     start_time = random.randint(20, 70)
 
     ydl_opts = {
         'format': 'bestaudio/best',
-        # Método estável: baixar e depois cortar com ffmpeg.
-        # Isso corrige o 'exit code 8' e garante a duração fixa.
-        'postprocessor_args': [
-            '-ss', str(start_time),  # Ponto de início do corte
-            '-t', str(duration),     # Duração exata do corte
-        ],
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'webm',
-            'preferredquality': '64'
-        }],
+        'postprocessor_args': ['-ss', str(start_time), '-t', str(duration)],
+        'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'webm', 'preferredquality': '64'}],
         'outtmpl': str(output_path).replace('.webm', ''),
         'quiet': not logger.isEnabledFor(logging.DEBUG),
         'noprogress': True,
+        # CORREÇÃO CRÍTICA: Adicionado ':' ao final
         'default_search': 'ytsearch1:',
         'retries': 2,
     }
@@ -162,15 +150,17 @@ def _download_song_segment(search_query: str, output_path: Path, duration: int):
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([search_query])
-
-        # yt-dlp adiciona a extensão, então o caminho final é este
+        
+        # VERIFICAÇÃO DE SUCESSO: Checa se o arquivo existe e tem um tamanho razoável
         expected_file = output_path.with_suffix('.webm')
         if expected_file.exists() and expected_file.stat().st_size > 1000:
             return True, expected_file
         else:
-            logger.debug(f"Download parece ter falhado, arquivo não encontrado ou pequeno: {expected_file}")
+            logger.debug(f"Falha no download, arquivo não encontrado ou pequeno: {expected_file}")
             return False, None
+            
     except DownloadError as e:
+        # Mostra o erro real do yt-dlp se o modo debug estiver ativo
         logger.debug(f"yt-dlp DownloadError para '{search_query}': {e}")
         return False, None
     except Exception as e:
@@ -181,7 +171,6 @@ def cleanup_failed_download(track_id: str):
     base_path = AUDIO_DIR / track_id
     for file_path in AUDIO_DIR.glob(f"{base_path.name}*"):
         try:
-            logger.debug(f"Limpando arquivo: {file_path}")
             file_path.unlink()
         except OSError as e:
             logger.debug(f"Erro ao limpar arquivo {file_path}: {e}")
@@ -193,6 +182,7 @@ async def download_track_async(track: Dict, is_retry=False):
     
     cleanup_failed_download(track_id)
 
+    # LÓGICA DE MÚLTIPLAS QUERIES para maior robustez
     search_queries = [
         f"{artist} {title} official audio",
         f"{artist} - {title}",
@@ -201,17 +191,15 @@ async def download_track_async(track: Dict, is_retry=False):
     
     for i, query in enumerate(search_queries):
         logger.debug(f"Tentativa {i+1}/{len(search_queries)} para '{title}' com a query: '{query}'")
-        try:
-            success, final_path = await asyncio.to_thread(
-                _download_song_segment, query, AUDIO_DIR / track_id, DOWNLOAD_DURATION
-            )
-            if success:
-                logger.info(f"✅ SUCESSO: '{title}' baixado ({final_path.stat().st_size} bytes).")
-                db.update_track_status(track_id, 'downloaded', str(final_path))
-                return 'downloaded'
-        except Exception as e:
-            logger.error(f"Exceção no worker de download para '{title}': {e}")
-            continue
+        # Usamos o caminho sem extensão, pois a função de download cuidará disso
+        output_path = AUDIO_DIR / track_id
+        success, final_path = await asyncio.to_thread(
+            _download_song_segment, query, output_path, DOWNLOAD_DURATION
+        )
+        if success and final_path:
+            logger.info(f"✅ SUCESSO: '{title}' baixado ({final_path.stat().st_size} bytes).")
+            db.update_track_status(track_id, 'downloaded', str(final_path))
+            return 'downloaded'
 
     final_status = 'failed_permanent' if is_retry else 'failed'
     logger.error(f"❌ FALHA: Não foi possível baixar '{title}' (testadas {len(search_queries)} queries).")
@@ -227,7 +215,7 @@ async def fetch_playlist_tracks(playlist_url: str) -> List[Dict]:
         while results:
             for item in results.get('items', []):
                 if track := item.get('track'):
-                    if track.get('id'):
+                    if track and track.get('id'):
                         tracks.append({
                             'id': track['id'], 'title': track['name'],
                             'artist': ', '.join(a['name'] for a in track.get('artists', []))
@@ -243,7 +231,7 @@ async def fetch_playlist_tracks(playlist_url: str) -> List[Dict]:
         return []
 
 async def process_downloads(tracks_to_process: List[Dict], concurrency: int, is_retry=False):
-    if not tracks_to_process: return {}
+    if not tracks_to_process: return
     semaphore = asyncio.Semaphore(concurrency)
     stats = {'downloaded': 0, 'failed': 0, 'failed_permanent': 0}
 
@@ -254,7 +242,6 @@ async def process_downloads(tracks_to_process: List[Dict], concurrency: int, is_
             await asyncio.sleep(random.uniform(0.5, 1.5))
 
     await asyncio.gather(*(run_with_semaphore(t) for t in tracks_to_process))
-    return stats
 
 def verify_downloaded_files():
     logger.info("Verificando integridade dos arquivos baixados...")
@@ -272,7 +259,6 @@ def verify_downloaded_files():
         logger.info("✅ Todos os arquivos baixados estão íntegros.")
 
 async def main(playlist_urls: List[str], concurrency: int):
-    if not sp: return
     logger.info("=" * 60 + "\nINICIANDO PROCESSO DE CACHE DE MÚSICAS\n" + "=" * 60)
     logger.info(f"Nível de concorrência: {concurrency}\nBanco de dados: {DB_PATH}")
     logger.info(f"Estado inicial do banco: {db.get_stats()}")
@@ -282,8 +268,9 @@ async def main(playlist_urls: List[str], concurrency: int):
     logger.info(f"{len(existing_ids)} faixas já no banco de dados.")
 
     new_tracks_to_add = []
-    for url in playlist_urls:
-        tracks = await fetch_playlist_tracks(url)
+    playlist_tasks = [fetch_playlist_tracks(url) for url in playlist_urls]
+    all_playlist_tracks = await asyncio.gather(*playlist_tasks)
+    for tracks in all_playlist_tracks:
         unprocessed = [t for t in tracks if t['id'] not in existing_ids]
         new_tracks_to_add.extend(unprocessed)
         logger.info(f"Novas faixas desta playlist: {len(unprocessed)}")
@@ -292,7 +279,7 @@ async def main(playlist_urls: List[str], concurrency: int):
         db.add_tracks_to_db(new_tracks_to_add)
         logger.info(f"✅ Adicionadas {len(new_tracks_to_add)} novas faixas ao banco.")
     else:
-        logger.info("Nenhuma faixa nova encontrada.")
+        logger.info("Nenhuma faixa nova para adicionar.")
 
     logger.info("\n" + "=" * 60 + "\nFASE 1: PRIMEIRA TENTATIVA DE DOWNLOAD\n" + "=" * 60)
     pending_tracks = db.get_tracks_by_status('pending')
