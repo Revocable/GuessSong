@@ -217,92 +217,38 @@ db = DatabaseManager()
 def _download_song_segment(search_query: str, output_path: Path, duration: int):
     """Baixa um segmento de áudio de uma música usando yt-dlp."""
     
-    # Configuração mais robusta do yt-dlp
+    start_time = random.randint(20, 70)
+    
     ydl_opts = {
-        'format': 'bestaudio[ext=webm]/bestaudio[ext=m4a]/bestaudio/best',
-        'outtmpl': str(output_path.with_suffix('.%(ext)s')),
+        'format': 'bestaudio/best',
+        'postprocessor_args': ['-ss', str(start_time), '-t', str(duration)],
+        'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'webm', 'preferredquality': '64'}],
+        'outtmpl': str(output_path).replace('.webm', ''),  # Remove .webm pois yt-dlp adiciona
         'quiet': True,
-        'no_warnings': True,
-        'extractaudio': True,
-        'audioformat': 'webm',
-        'audioquality': '64K',
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'webm',
-            'preferredquality': '64',
-        }],
-        'postprocessor_args': [
-            '-ss', str(random.randint(20, 70)),  # início aleatório
-            '-t', str(duration)  # duração
-        ],
+        'noprogress': True,
         'default_search': 'ytsearch1:',
-        'ignoreerrors': True,
-        'retries': 2,
-        'fragment_retries': 2,
-        'skip_unavailable_fragments': True,
-        'keep_fragments': False,
-        'extract_flat': False,
-        'writethumbnail': False,
-        'writeinfojson': False,
-        'writesubtitles': False,
-        'writeautomaticsub': False,
     }
     
-    # Adicionar aria2c se disponível
     if ARIA2C_PATH:
         ydl_opts['external_downloader'] = ARIA2C_PATH
-        ydl_opts['external_downloader_args'] = [
-            '-x', '4', '-s', '4', '-k', '1M', 
-            '--console-log-level=error',
-            '--summary-interval=0'
-        ]
+        ydl_opts['external_downloader_args'] = ['-x', '16', '-s', '16', '-k', '1M', '--console-log-level=warn']
 
     try:
-        logger.debug(f"Tentando download: {search_query}")
-        
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            # Fazer o download diretamente
             ydl.download([search_query])
         
-        # Verificar se o arquivo foi criado com sucesso
-        possible_extensions = ['.webm', '.m4a', '.mp3', '.opus', '.ogg']
-        actual_file = None
+        # Verificar se o arquivo foi criado (yt-dlp adiciona .webm automaticamente)
+        expected_file = Path(str(output_path).replace('.webm', '') + '.webm')
         
-        # Primeiro verificar se o arquivo base existe
-        base_path = output_path.with_suffix('')
-        parent_dir = base_path.parent
-        base_name = base_path.name
-        
-        # Procurar por arquivos com o nome base e extensões válidas
-        for file_path in parent_dir.glob(f"{base_name}.*"):
-            if file_path.suffix.lower() in possible_extensions and file_path.stat().st_size > 5000:  # pelo menos 5KB
-                actual_file = file_path
-                logger.debug(f"Arquivo encontrado: {actual_file} ({actual_file.stat().st_size} bytes)")
-                break
-        
-        if actual_file:
-            # Renomear para .webm se não for
-            final_path = output_path.with_suffix('.webm')
-            if actual_file != final_path:
-                try:
-                    if final_path.exists():
-                        final_path.unlink()  # Remove arquivo existente
-                    actual_file.rename(final_path)
-                    logger.debug(f"Arquivo renomeado para: {final_path}")
-                except OSError as e:
-                    logger.debug(f"Erro ao renomear arquivo (mas download ok): {e}")
-                    final_path = actual_file  # Manter o arquivo original
-            
-            logger.debug(f"Download concluído: {final_path} ({final_path.stat().st_size} bytes)")
+        if expected_file.exists() and expected_file.stat().st_size > 1000:
+            logger.debug(f"Segment downloaded: {expected_file}")
             return True
         else:
-            # Debug: listar todos os arquivos no diretório
-            all_files = list(parent_dir.glob(f"{base_name}*"))
-            logger.debug(f"Arquivo não encontrado. Arquivos similares: {[f.name for f in all_files]}")
+            logger.debug(f"File not created or too small: {expected_file}")
             return False
             
     except Exception as e:
-        logger.debug(f"Erro durante download de '{search_query}': {e}")
+        logger.debug(f"Download failed for '{search_query}': {e}")
         return False
 
 def cleanup_failed_download(filepath: Path):
@@ -310,21 +256,27 @@ def cleanup_failed_download(filepath: Path):
     if not filepath:
         return
         
-    # Limpar arquivos com diferentes extensões
-    possible_extensions = ['.webm', '.m4a', '.mp3', '.opus', '.ogg', '.part', '.tmp', '.ytdl']
+    # Remover o arquivo .webm se existir
+    webm_file = Path(str(filepath).replace('.webm', '') + '.webm')
+    if webm_file.exists():
+        try:
+            logger.debug(f"Limpando arquivo: {webm_file}")
+            webm_file.unlink()
+        except OSError as e:
+            logger.debug(f"Erro ao limpar arquivo {webm_file}: {e}")
     
-    base_path = filepath.with_suffix('')
+    # Também limpar arquivos temporários
+    base_path = Path(str(filepath).replace('.webm', ''))
     parent_dir = base_path.parent
     base_name = base_path.name
     
-    # Remover todos os arquivos que começam com o nome base
     for file_path in parent_dir.glob(f"{base_name}*"):
-        if file_path.suffix.lower() in possible_extensions or file_path.suffix in ['.part', '.tmp', '.ytdl']:
+        if file_path.suffix.lower() in ['.part', '.tmp', '.ytdl']:
             try:
-                logger.debug(f"Limpando arquivo: {file_path}")
+                logger.debug(f"Limpando arquivo temporário: {file_path}")
                 file_path.unlink()
             except OSError as e:
-                logger.debug(f"Erro ao limpar arquivo {file_path}: {e}")
+                logger.debug(f"Erro ao limpar arquivo temporário {file_path}: {e}")
 
 async def download_track_async(track: Dict, is_retry=False):
     """Wrapper assíncrono para o download de uma faixa, com atualização no DB."""
@@ -363,26 +315,14 @@ async def download_track_async(track: Dict, is_retry=False):
             
             if success:
                 # Verificar se o arquivo realmente existe
-                final_file = None
+                expected_file = Path(str(output_path).replace('.webm', '') + '.webm')
                 
-                # Primeiro tentar o arquivo .webm esperado
-                webm_file = output_path.with_suffix('.webm')
-                if webm_file.exists() and webm_file.stat().st_size > 5000:
-                    final_file = webm_file
-                else:
-                    # Procurar qualquer arquivo com o nome base se .webm não existir
-                    base_path = output_path.with_suffix('')
-                    for file_path in base_path.parent.glob(f"{base_path.name}.*"):
-                        if file_path.suffix.lower() in ['.webm', '.m4a', '.mp3', '.opus'] and file_path.stat().st_size > 5000:
-                            final_file = file_path
-                            break
-                
-                if final_file and final_file.exists() and final_file.stat().st_size > 5000:
-                    logger.info(f"SUCESSO: '{title}' baixado ({final_file.stat().st_size} bytes).")
-                    db.update_track_status(track_id, 'downloaded', str(final_file))
+                if expected_file.exists() and expected_file.stat().st_size > 1000:
+                    logger.info(f"SUCESSO: '{title}' baixado ({expected_file.stat().st_size} bytes).")
+                    db.update_track_status(track_id, 'downloaded', str(expected_file))
                     return 'downloaded'
                 else:
-                    logger.debug(f"Arquivo não encontrado após download: esperado {output_path}")
+                    logger.debug(f"Arquivo não encontrado após download: {expected_file}")
                     success = False
             
             if success:
