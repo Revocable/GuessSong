@@ -157,8 +157,8 @@ class GameRoom:
         ydl_opts = {
             'format': 'bestaudio/best',
             'postprocessor_args': ['-ss', str(start_time), '-t', str(duration)],
-            'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3'}],
-            'outtmpl': output_path.replace('.mp3', ''),
+            'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'webm', 'preferredquality': '64'}],
+            'outtmpl': output_path.replace('.webm', ''),
             'quiet': True,
             'default_search': 'ytsearch1',
         }
@@ -252,8 +252,8 @@ class GameRoom:
             self.game_tracks = []
             for track_data in selected_tracks:
                 if not track_data.get('name') or not track_data.get('artists'): continue
-                filepath = Path("static/audio") / f"{track_data['id']}.mp3"
-                self.game_tracks.append({"id": track_data['id'], "title": track_data['name'], "artist": track_data['artists'][0]['name'], "file": f"{track_data['id']}.mp3", "download_status": 'downloaded' if filepath.exists() else 'pending', "download_task": None})
+                filepath = Path("static/audio") / f"{track_data['id']}.webm"
+                self.game_tracks.append({"id": track_data['id'], "title": track_data['name'], "artist": track_data['artists'][0]['name'], "file": f"{track_data['id']}.webm", "download_status": 'downloaded' if filepath.exists() else 'pending', "download_task": None})
             
             self._download_tasks = [asyncio.create_task(self._download_wrapper(track)) for track in self.game_tracks if track['download_status'] == 'pending']
             for i, track in enumerate(t for t in self.game_tracks if t['download_status'] == 'pending'):
