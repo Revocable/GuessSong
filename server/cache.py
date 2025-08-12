@@ -55,6 +55,7 @@ def _download_song_segment(search_query: str, output_path: Path, duration: int):
         'outtmpl': str(output_path.with_suffix('')), # yt-dlp adiciona a extensão
         'quiet': True,
         'noprogress': True,
+        'default_search': 'ytsearch1',
     }
     if ARIA2C_PATH:
         ydl_opts['external_downloader'] = ARIA2C_PATH
