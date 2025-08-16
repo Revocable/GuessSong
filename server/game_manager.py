@@ -154,13 +154,24 @@ class GameRoom:
 
     def _download_song_segment(self, search_query: str, output_path: str, duration: int):
         start_time = random.randint(20, 70)
+        # remove extensão .webm do caminho, yt-dlp vai adicionar sozinho
+        outtmpl = output_path[:-5] if output_path.endswith(".webm") else output_path  
+
         ydl_opts = {
-            'format': 'bestaudio/best',
-            'postprocessor_args': ['-ss', str(start_time), '-t', str(duration)],
-            'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'webm', 'preferredquality': '64'}],
-            'outtmpl': output_path.replace('.webm', ''),
+            'format': 'bestaudio[ext=webm]/bestaudio/best',
+            'postprocessor_args': [
+                '-ss', str(start_time),
+                '-t', str(duration),
+                '-c:a', 'libopus',
+                '-b:a', '64k'
+            ],
+            'outtmpl': outtmpl,
             'quiet': True,
             'default_search': 'ytsearch1',
+            'postprocessors': [{
+                'key': 'FFmpegVideoConvertor',
+                'preferedformat': 'webm'
+            }]
         }
         if ARIA2C_PATH:
             ydl_opts['external_downloader'] = ARIA2C_PATH
@@ -173,6 +184,8 @@ class GameRoom:
         except Exception as e:
             logger.error(f"Download failed for '{search_query}': {e}")
             return False
+
+
 
     async def _download_wrapper(self, track: Dict):
         track['download_status'] = 'downloading'
