@@ -1239,14 +1239,14 @@
 
             guessInput.addEventListener('input', () => {
                 const value = guessInput.value.toLowerCase();
-                const normalizedValue = stripAccents(value);
+                const normalizedValue = stripAccents(value).replace(/'/g, "");
                 autocompleteResults.innerHTML = '';
                 if (!value) {
                     autocompleteResults.classList.add('hidden');
                     return;
                 }
                 const filteredTitles = trackTitles.filter(title => {
-                    const normalizedTitle = stripAccents(title.toLowerCase());
+                    const normalizedTitle = stripAccents(title.toLowerCase()).replace(/'/g, "");
                     return normalizedTitle.includes(normalizedValue);
                 }).slice(0, 5);
                 
